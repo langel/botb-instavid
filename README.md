@@ -1,7 +1,5 @@
 # sloppy notes that will become greatness
 
-gonna try python for this instead of php just for fun ;3
-
 instagram images are 1080x1080
 videos limited to 15 seconds
 
