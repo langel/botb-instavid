@@ -9,6 +9,13 @@ H.264 codec / MP4
 3,500 kbps video bitrate
 AAC audio codec at 44.1 kHz mono
 
+
+twitter suggested specs
+1280x720 pixels max
+30 seconds max
+40fps or less
+
+
 build video from avatar and mp3
 
 video can be static image but scrolling text would be nicer
