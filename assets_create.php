@@ -50,10 +50,6 @@ imagedestroy($img);
 
 # create BotB logo
 
-$img = imagecreatetruecolor(1704, 250);
-imagesavealpha($img, true);
-$trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
-imagefill($img, 0, 0, $trans);
 $text = 'battleofthebits.org';
 $font = './arial-black.ttf';
 $size = 160;
@@ -66,22 +62,28 @@ function create_color($hex, $img) {
 	$b = hexdec(substr($hex,4,2));
 	return imagecolorallocate($img,$r,$g,$b);
 }
-for ($j = 3; $j <= 5; $j++) {
-	$color = create_color($pal['color'.$j], $img);
-	$x = 0;
-	for ($i = 0; $i < strlen($text); $i++) {
-		$bbox = imagettftext($img, $size, 0, $x, $y, $color, $font, $text[$i]);
-		$x += $spacing + ($bbox[2] - $bbox[0]);
+for ($k = 1; $k <= 5; $k++) {
+	$img = imagecreatetruecolor(1704, 250);
+	imagesavealpha($img, true);
+	$trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
+	imagefill($img, 0, 0, $trans);
+	for ($j = 3; $j <= 5; $j++) {
+		$color = create_color($pal['color'.$j], $img);
+		$x = 0;
+		for ($i = 0; $i < strlen($text); $i++) {
+			$bbox = imagettftext($img, $size, 0, $x, $y, $color, $font, $text[$i]);
+			$x += $spacing + ($bbox[2] - $bbox[0]);
+		}
+		$y += 20;
 	}
-	$y += 20;
+	imagepng($img, 'assets/botblogo-'.$k.'.png');
+	imagedestroy($img);
 }
-imagepng($img, 'assets/botblogo.png');
-imagedestroy($img);
-
 
 # noob and title
 
 $font = './merriweather_sans.ttf';
+$font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $img = imagecreatetruecolor(1096,246);
 imagesavealpha($img, true);
 $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
@@ -98,7 +100,6 @@ imagedestroy($img);
 
 # format title
 
-$font = './merriweather_sans.ttf';
 $img = imagecreatetruecolor(996,96);
 imagesavealpha($img, true);
 $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
@@ -114,7 +115,6 @@ imagedestroy($img);
 
 # battle and time
 
-$font = './merriweather_sans.ttf';
 $img = imagecreatetruecolor(1096,246);
 imagesavealpha($img, true);
 $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
