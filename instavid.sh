@@ -8,13 +8,23 @@ curl --data "entry_id=$entry_id" http://battleofthebits.org/api/instavid/track_i
 php -f assets_get.php 
 ./assets_resize.sh
 
-length=`ffprobe assets/mp3 2>&1 |grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'`
+avatar_frames=`identify assets/avatar | sed -n 'p;$=' | tail -1`;
+if [ "$avatar_frames" -gt 1 ] 
+then
+	loop='-ignore_loop 0'
+	echo -e "AVATAR :: $avatar_frames animated GIF frames detected\n"
+else
+	loop=''
+	echo -e "AVATAR :: still image\n"
+fi
+
+length=`ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'`
 echo -e "media length :: $length seconds\n"
 
 php -f assets_create.php $length
 
 echo -e "rendering video\n"
-ffmpeg -i assets/background.png -thread_queue_size 64 -loop 1 -i assets/avatar500-%03d.png -i assets/battle-art300-%03d.png -i assets/format.png -thread_queue_size 64 -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png -i assets/mp3 -filter_complex "
+ffmpeg -i assets/background.png -thread_queue_size 64 $loop -i assets/avatar500 -i assets/battle-art300-%03d.png -i assets/format.png -thread_queue_size 64 -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png -i assets/mp3 -filter_complex "
 nullsrc=size=1920x1080 [base];
 [0:v] setpts=PTS-STARTPTS [bg];
 [1:v] setpts=PTS-STARTPTS [avatar];
