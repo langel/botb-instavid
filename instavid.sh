@@ -24,7 +24,7 @@ echo -e "media length :: $length seconds\n"
 php -f assets_create.php $length
 
 echo -e "rendering video\n"
-ffmpeg -i assets/background.png -thread_queue_size 64 $loop -i assets/avatar500 -i assets/battle-art300-%03d.png -i assets/format.png -thread_queue_size 64 -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png -i assets/mp3 -filter_complex "
+ffmpeg -i assets/background.png $loop -i assets/avatar500 -i assets/battle-art300-%03d.png -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png -i assets/mp3 -filter_complex "
 nullsrc=size=1920x1080 [base];
 [0:v] setpts=PTS-STARTPTS [bg];
 [1:v] setpts=PTS-STARTPTS [avatar];
@@ -38,7 +38,7 @@ nullsrc=size=1920x1080 [base];
 [tmp2][battle] overlay=1:x=1512:y=408 [tmp3];
 [tmp3][format] overlay=1:x='716+(688-overlay_w)*0.5':y=512 [tmp4];
 [tmp4][botblogo] overlay=1:x=108:y=780 [tmp5];
-[tmp5][title] overlay=1:x=716:y=108 [tmp7];
+[tmp5][title] overlay=1:x=691:y=108 [tmp7];
 [tmp7][battle_time] overlay=1:x='716+(688-overlay_w)*0.5':y=608
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
 

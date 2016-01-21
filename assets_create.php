@@ -88,32 +88,31 @@ for ($k = 0; $k < 5; $k++) {
 
 # title and n00b
 
-$font = './merriweather_sans.ttf';
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
-$scale_max = 2;
-$title_text = wordwrap($data['title'], 22, "\n\r");
+$scale_max = 2.5;
+$wrap_at = max(22, 15 + floor(strlen($data['title'])*0.35));
+$title_text = wordwrap($data['title'], $wrap_at, "\n\r");
 $title_dim = imagettfbbox($size, 0, $font, $title_text);
 $noob_text = '  '.$data['botbr_data']['name'];
 $noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $title_width = $title_dim[2];
-$title_height = $title_dim[1];
+$title_height = "\n". $size * (substr_count($title_text, "\n") + 2);
 $max_width = 1920 - 716 - 108;
-$max_height = 420;
+$max_height = 300;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
-//$size *= min($scale_x, $scale_y, $scale_max);
-echo $title_height.';; '.$scale_x .', '. $scale_y .' : '.$size."\n";
-print_r($title_dim);
-$img = imagecreatetruecolor(1096,600);
+$size *= min($scale_x, $scale_y, $scale_max);
+echo "\n\ntitle font size :: $size\n\n";
+$img = imagecreatetruecolor(1146,600);
 imagesavealpha($img, true);
 $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
 imagefill($img, 0, 0, $trans);
 $color = create_color($pal['color1'], $img);
-$y = floor($size * 1.1);
-print_r($bbox = imagettftext($img, $size, 0, 0, $y, $color, $font, $title_text)); 
+$y = floor($size * 0.92);
+$bbox = imagettftext($img, $size, 0, 25, $y, $color, $font, $title_text); 
 $color = create_color($pal['color2'], $img);
-imagettftext($img, $size, 0, 0, $bbox[3]+$y, $color, $font, $noob_text); 
+imagettftext($img, $size, 0, 25, $y*1.2 + $bbox[1], $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
 
