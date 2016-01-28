@@ -91,7 +91,17 @@ for ($k = 0; $k < 5; $k++) {
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
 $scale_max = 2.5;
-$wrap_at = max(22, 15 + floor(strlen($data['title'])*0.35));
+
+$wrap_at = 25;
+$title_length = strlen($data['title']);
+echo "\n\n  title length : $title_length\n";
+if ($title_length > 40) $wrap_at = ceil($title_length * 0.6);
+if ($title_length > 80) $wrap_at = ceil($title_length * 0.4);
+if ($title_length > 120) $wrap_at = ceil($title_length * 0.3);
+echo "  wrapping lines at $wrap_at characters \n";
+
+
+//$wrap_at = max(22, 15 + floor(strlen($data['title'])*0.35));
 $title_text = wordwrap($data['title'], $wrap_at, "\n\r");
 $title_dim = imagettfbbox($size, 0, $font, $title_text);
 $noob_text = '  '.$data['botbr_data']['name'];
