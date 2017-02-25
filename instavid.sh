@@ -46,4 +46,3 @@ echo -e "moving output to derpdeck\n"
 mv "$entry_id.mp4" ~/derpdeck/botb-instavid/
 
 echo -e "cleaning up mess\n"
-rm -rf assets
