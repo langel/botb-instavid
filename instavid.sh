@@ -42,7 +42,5 @@ nullsrc=size=1920x1080 [base];
 [tmp7][battle_time] overlay=1:x='716+(688-overlay_w)*0.5':y=608
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
 
-echo -e "moving output to derpdeck\n"
-mv "$entry_id.mp4" ~/derpdeck/botb-instavid/
-
 echo -e "cleaning up mess\n"
+rm -rf assets
