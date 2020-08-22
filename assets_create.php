@@ -50,7 +50,7 @@ imagedestroy($img);
 
 $text = 'battleofthebits.org';
 $font = './arial-black.ttf';
-$size = 160;
+$size = 120;
 $spacing = -20;
 function create_color($hex, $img) {
 	$r = hexdec(substr($hex,0,2));
@@ -100,29 +100,41 @@ if ($title_length > 80) $wrap_at = ceil($title_length * 0.4);
 if ($title_length > 120) $wrap_at = ceil($title_length * 0.3);
 echo "  wrapping lines at $wrap_at characters \n";
 
+// create title/n00b image object
+$img = imagecreatetruecolor(1146,600);
+imagesavealpha($img, true);
+$trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
+imagefill($img, 0, 0, $trans);
 
-//$wrap_at = max(22, 15 + floor(strlen($data['title'])*0.35));
+// figure out title size
 $title_text = wordwrap($data['title'], $wrap_at, "\n\r");
 $title_dim = imagettfbbox($size, 0, $font, $title_text);
-$noob_text = '  '.$data['botbr_data']['name'];
-$noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $title_width = $title_dim[2];
 $title_height = "\n". $size * (substr_count($title_text, "\n") + 2);
 $max_width = 1920 - 716 - 108;
 $max_height = 300;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
-$size *= min($scale_x, $scale_y, $scale_max);
+$title_size = $size * min($scale_x, $scale_y, $scale_max);
 echo "\n\ntitle font size :: $size\n\n";
-$img = imagecreatetruecolor(1146,600);
-imagesavealpha($img, true);
-$trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
-imagefill($img, 0, 0, $trans);
+
+// create entry title
 $color = create_color($pal['color1'], $img);
-$y = floor($size * 0.92);
-$bbox = imagettftext($img, $size, 0, 25, $y, $color, $font, $title_text); 
+$y = floor($title_size * 0.92);
+$bbox = imagettftext($img, $title_size, 0, 25, $y, $color, $font, $title_text); 
+
+// figure out botbr name size
+$noob_text = '  '.$data['botbr_data']['name'];
+$noob_dim = imagettfbbox($size, 0, $font, $noob_text);
+$noob_width = $noob_dim[2];
+$noob_left_padding = 25;
+$max_width -= $noob_left_padding;
+$scale_x = $max_width / $noob_width;
+$noob_size = $size * $scale_x;
+
+// create botbr name
 $color = create_color($pal['color2'], $img);
-imagettftext($img, $size, 0, 25, $y*1.2 + $bbox[1], $color, $font, $noob_text); 
+imagettftext($img, $noob_size, 0, $noob_left_padding, $y*1.2 + $bbox[1] + 27, $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
 

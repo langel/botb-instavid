@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare -a arr=(8024 14734 7696 11227 28796 7472 7027 1657 26611)
+declare -a arr=(7096 13840 128 12384)
 
 for i in "${arr[@]}"
 do
