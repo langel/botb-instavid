@@ -86,6 +86,8 @@ for ($k = 0; $k < 5; $k++) {
 	imagedestroy($img);
 }
 
+
+
 # title and n00b
 
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
@@ -116,7 +118,7 @@ $max_height = 300;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
-echo "\n\ntitle font size :: $size\n\n";
+echo "\n\ntitle font size :: $title_size";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
@@ -125,21 +127,25 @@ $bbox = imagettftext($img, $title_size, 0, 25, $y, $color, $font, $title_text);
 
 // figure out botbr name size
 $noob_text = '  '.$data['botbr_data']['name'];
-$noob_dim = imagettfbbox($size, 0, $font, $noob_text);
+$noob_dim = imagettfbbox($title_size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
-$noob_left_padding = 25;
 $max_width -= $noob_left_padding;
 $scale_x = $max_width / $noob_width;
-$noob_size = $size * $scale_x;
+$noob_size = ($scale_x > 1) ? $title_size : $title_size * $scale_x;
+echo "\n\nbotbr font size :: $noob_size";
 
 // create botbr name
 $color = create_color($pal['color2'], $img);
-imagettftext($img, $noob_size, 0, $noob_left_padding, $y*1.2 + $bbox[1] + 27, $color, $font, $noob_text); 
+$x = 25;
+$y = floor($noob_size * 0.92) + $bbox[1] + 25;
+print "\n\n\n\n\n bbox\n";
+print_r($bbox);
+imagettftext($img, $noob_size, 0, $x, $y + 27, $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
 
 
-# format title
+# format icon and text
 
 $font = './Passion_One/PassionOne-Regular.ttf';
 $size = 32;
