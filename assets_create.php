@@ -11,11 +11,11 @@ print_r($pal);
 function get_wrap_at($str) {
 	$wrap_at = 25;
 	$str_len = strlen($str);
-	echo "\n\n  wrappable string length : $str_len";
+	echo "  wrappable string length : $str_len\n";
 	if ($str_len > 40) $wrap_at = ceil($str_len * 0.6);
 	if ($str_len > 80) $wrap_at = ceil($str_len * 0.4);
 	if ($str_len > 120) $wrap_at = ceil($str_len * 0.3);
-	echo "\n  wrapping lines at $wrap_at characters";
+	echo "  wrapping lines at $wrap_at characters\n\n";
 	return $wrap_at;
 }
 
@@ -64,8 +64,8 @@ imagedestroy($img);
 
 $text = 'battleofthebits.org';
 $font = './arial-black.ttf';
-$size = 120;
-$spacing = -20;
+$size = 110;
+$spacing = -15;
 function create_color($hex, $img) {
 	$r = hexdec(substr($hex,0,2));
 	$g = hexdec(substr($hex,2,2));
@@ -92,6 +92,7 @@ for ($k = 0; $k < 5; $k++) {
 	}
 	imagepng($img, 'assets/botblogo-'.$k.'.png');
 	imagedestroy($img);
+	print "\n\n";
 }
 
 
@@ -120,7 +121,7 @@ $max_height = 300;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
-echo "\n\ntitle font size :: $title_size";
+echo "title font size :: $title_size\n\n";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
@@ -136,15 +137,13 @@ if (count($data['authors']) > 1) {
 else $noob_text = $data['botbr']['name'];
 $wrap_at = get_wrap_at($noob_text);
 $noob_text = wordwrap($noob_text, $wrap_at, "\n\r");
-$noob_dim = imagettfbbox($title_size, 0, $font, $noob_text);
+$noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
 $noob_left_padding = 75;
 $max_width -= $noob_left_padding;
-$scale_x = $max_width / $noob_width;
-$max_scale_up = 1.125;
-$scale_x = ($scale_x > $max_scale_up) ? $max_scale_up : $scale_x;
-$noob_size = $title_size * $scale_x;
-echo "\n\nbotbr font size :: $noob_size";
+$scale_x = min($scale_max, $max_width / $noob_width);
+$noob_size = $size * $scale_x;
+echo "botbr font size :: $noob_size\n\n";
 
 // create botbr name
 $color = create_color($pal['color2'], $img);

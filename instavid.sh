@@ -37,10 +37,10 @@ nullsrc=size=1920x1080 [base];
 [tmp1][avatar] overlay=1:x=108:y=108 [tmp2];
 [tmp2][battle] overlay=1:x=1362:y=522 [tmp3];
 [tmp3][format] overlay=1:x='960-(overlay_w-50)*0.5':y=562 [tmp4];
-[tmp4][botblogo] overlay=1:x=108:y=820 [tmp5];
+[tmp4][botblogo] overlay=1:x=100:y=830 [tmp5];
 [tmp5][title] overlay=1:x=691:y=108 [tmp7];
 [tmp7][battle_time] overlay=1:x='960-(overlay_w+100)*0.5':y=666
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
 
 echo -e "cleaning up mess\n"
-#rm -rf assets
+rm -rf assets
