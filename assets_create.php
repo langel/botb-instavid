@@ -3,7 +3,21 @@
 # grok data
 
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
-$pal = $data['palette_data'];
+
+system('curl http://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
+$pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
+print_r($pal);
+
+function get_wrap_at($str) {
+	$wrap_at = 25;
+	$str_len = strlen($str);
+	echo "\n\n  wrappable string length : $str_len";
+	if ($str_len > 40) $wrap_at = ceil($str_len * 0.6);
+	if ($str_len > 80) $wrap_at = ceil($str_len * 0.4);
+	if ($str_len > 120) $wrap_at = ceil($str_len * 0.3);
+	echo "\n  wrapping lines at $wrap_at characters";
+	return $wrap_at;
+}
 
 
 # create background
@@ -74,12 +88,6 @@ for ($k = 0; $k < 5; $k++) {
 			$bbox = imagettftext($img, $size, 0, $x, $y, $color, $font, $text[$i]);
 			$x += $spacing + ($bbox[2] - $bbox[0]);
 		}
-		/*
-		if ($j == 0) $y+= 18;
-		if ($j == 1) $y+= 11;
-		if ($j == 2) $y+= 7;
-		if ($j == 3) $y+= 4;
-		*/
 		$y+=8;
 	}
 	imagepng($img, 'assets/botblogo-'.$k.'.png');
@@ -94,13 +102,6 @@ $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
 $scale_max = 2.5;
 
-$wrap_at = 25;
-$title_length = strlen($data['title']);
-echo "\n\n  title length : $title_length\n";
-if ($title_length > 40) $wrap_at = ceil($title_length * 0.6);
-if ($title_length > 80) $wrap_at = ceil($title_length * 0.4);
-if ($title_length > 120) $wrap_at = ceil($title_length * 0.3);
-echo "  wrapping lines at $wrap_at characters \n";
 
 // create title/n00b image object
 $img = imagecreatetruecolor(1146,600);
@@ -109,6 +110,7 @@ $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
 imagefill($img, 0, 0, $trans);
 
 // figure out title size
+$wrap_at = get_wrap_at($data['title']);
 $title_text = wordwrap($data['title'], $wrap_at, "\n\r");
 $title_dim = imagettfbbox($size, 0, $font, $title_text);
 $title_width = $title_dim[2];
@@ -126,21 +128,28 @@ $y = floor($title_size * 0.92);
 $bbox = imagettftext($img, $title_size, 0, 25, $y, $color, $font, $title_text); 
 
 // figure out botbr name size
-$noob_text = '  '.$data['botbr_data']['name'];
+if (count($data['authors']) > 1) {
+	$author_list = [];
+	foreach ($data['authors'] as $author) $author_list[] = $author['name'];
+	$noob_text = implode(' & ', $author_list);
+}
+else $noob_text = $data['botbr']['name'];
+$wrap_at = get_wrap_at($noob_text);
+$noob_text = wordwrap($noob_text, $wrap_at, "\n\r");
 $noob_dim = imagettfbbox($title_size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
+$noob_left_padding = 75;
 $max_width -= $noob_left_padding;
 $scale_x = $max_width / $noob_width;
-$noob_size = ($scale_x > 1) ? $title_size : $title_size * $scale_x;
+$max_scale_up = 1.125;
+$scale_x = ($scale_x > $max_scale_up) ? $max_scale_up : $scale_x;
+$noob_size = $title_size * $scale_x;
 echo "\n\nbotbr font size :: $noob_size";
 
 // create botbr name
 $color = create_color($pal['color2'], $img);
-$x = 25;
 $y = floor($noob_size * 0.92) + $bbox[1] + 25;
-print "\n\n\n\n\n bbox\n";
-print_r($bbox);
-imagettftext($img, $noob_size, 0, $x, $y + 27, $color, $font, $noob_text); 
+imagettftext($img, $noob_size, 0, $noob_left_padding, $y + 27, $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
 
@@ -149,7 +158,7 @@ imagedestroy($img);
 
 $font = './Passion_One/PassionOne-Regular.ttf';
 $size = 32;
-$text = $data['format_title'];
+$text = $data['format']['title'];
 $text_dim = imagettfbbox($size, 0, $font, $text);
 $img = imagecreatetruecolor($text_dim[2]+88,96);
 imagesavealpha($img, true);
@@ -168,7 +177,7 @@ imagedestroy($img);
 # battle and time
 
 $size = 32;
-$text = 'submitted to '.$data['battle_data']['title'];
+$text = 'submitted to '.$data['battle']['title'];
 $text = wordwrap($text, 50, "\n");
 $text .= "\n".'                           on '.substr($data['datetime'], 0, 10);
 $text_dim = imagettfbbox($size, 0, $font, $text);

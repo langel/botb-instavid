@@ -3,7 +3,7 @@
 entry_id=$1
 
 mkdir assets
-curl --data "entry_id=$entry_id" http://battleofthebits.org/api/instavid/track_info/ > assets/data.json
+curl http://battleofthebits.org/api/v1/entry/load/$entry_id > assets/data.json
 
 php -f assets_get.php 
 ./assets_resize.sh
@@ -43,4 +43,4 @@ nullsrc=size=1920x1080 [base];
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
 
 echo -e "cleaning up mess\n"
-rm -rf assets
+#rm -rf assets
