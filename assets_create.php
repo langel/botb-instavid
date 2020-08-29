@@ -20,9 +20,8 @@ function get_wrap_at($str) {
 }
 
 
-# create background
-
-echo "creating background \n\n";
+echo "CREATING BACKGROUND :: \n";
+system('wget http://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
 function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	if($x > $x1 || $y > $y1) {
 		return false;
@@ -48,10 +47,11 @@ function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	return true;
 }
 $imgWidth = 1920;
-$imgHeight = 1080 + floor($argv[1] * 20);
-$img = imagecreatetruecolor($imgWidth,$imgHeight);
-image_gradientrect($img,0,0,$imgWidth,floor($imgHeight*0.5), $pal['color5'], $pal['color4']);
-image_gradientrect($img,0,ceil($imgHeight*0.5),$imgWidth,$imgHeight, $pal['color4'], $pal['color3']);
+$mp3_length = system("ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'");
+$imgHeight = 1080 + floor($mp3_length * 20);
+$img = imagecreatetruecolor($imgWidth, $imgHeight);
+image_gradientrect($img, 0, 0, $imgWidth,floor($imgHeight * 0.5), $pal['color5'], $pal['color4']);
+image_gradientrect($img, 0, ceil($imgHeight * 0.5), $imgWidth, $imgHeight, $pal['color4'], $pal['color3']);
 $water_pattern = imagecreatefrompng('assets/botb_bg.png');
 imagesettile($img, $water_pattern);
 imagefilledrectangle($img, 0, 0, $imgWidth, $imgHeight, IMG_COLOR_TILED);

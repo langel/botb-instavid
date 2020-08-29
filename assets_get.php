@@ -3,12 +3,91 @@
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 print_r($data);
 
-system('wget "http://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
-system('wget '.$data['battle']['cover_art_url'].' -O assets/battle_art');
-system('wget '.$data['format']['icon_url'].' -O assets/format_icon');
-system('wget http://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
 
-// XXX need collabdong handling here
+print "HANDLING BATTLE COVER ART ::\n";
+system('wget '.$data['battle']['cover_art_url'].' -O assets/battle_art');
+system('convert assets/battle_art -resize 450x450 -coalesce assets/battle-art300-%03d.png');
+
+
+print "HANDLING FORMAT ICON ::\n";
+system('wget '.$data['format']['icon_url'].' -O assets/format_icon');
+system('convert assets/format_icon -filter box -resize 64x64 -coalesce assets/format_icon.png');
+
+
+print "HANDLING AVATARS ::\n";
+$author_count = count($data['authors']);
+$avatar_resize_to = ($author_count > 1) ? 250 : 500;
+$assets_cli = $setpts = $position = '';
+$i = 0;
 foreach ($data['authors'] as $author) {
-	system('wget http://battleofthebits.org/disk/avatars/'.$author['avatar_from_time'].' -O assets/avatar');
+	$id = $author['id'];
+	// get the image
+	system('wget http://battleofthebits.org/disk/avatars/'.$author['avatar_from_time'].' -O assets/avatar'.$id);
+	// resize
+	$target_file = "assets/avatar".$author['avatar_from_time'];
+	print "resizing avatar $target_file\n";
+	system('convert assets/avatar'.$id.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' -coalesce '.$target_file);
+	// check if its animated
+	$avatar_frames = system("identify $target_file | sed -n 'p;$=' | tail -1");
+	if ((int)$avatar_frames > 1) {
+		print "AVATAR :: $avatar_frames animated GIF frames detected\n";
+		$assets_cli .= '-ignore_loop 0 ';
+	}
+	else print "AVATAR :: still image \n";
+	$assets_cli .= '-i '.$target_file.' ';
+	// create all the other ffmpeg crap
+	$setpts .= '['.($i + 6).':v] setpts=PTS-STARTPTS [avatar'.$id.'];'."\n";
+	$x = $y = 108;
+	if ($i % 2) $x += 250;
+	if ($author_count == 2 && $i == 1) $y = 108 + 250;
+	else $y += floor($i / 2) * 250;
+	$position .= " [ava0".$i."];\n[ava0".$i."][avatar".$id."] overlay=1:x=".$x.":y=".$y;
+	$i++;
 }
+
+print "DONLOAD TEH MP3 ::\n";
+system('wget "http://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
+$mp3_length = system("ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'");
+echo "media length :: $mp3_length seconds\n";
+
+$battle_offset = ($author_count < 6) ? 960 : 1020;
+/*
+# WORKING FFMPEG CALL 
+ffmpeg -i assets/background.png -i assets/battle-art300-%03d.png -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png $loop -i assets/avatar500 -i assets/mp3 -filter_complex "
+nullsrc=size=1920x1080 [base];
+[0:v] setpts=PTS-STARTPTS [bg];
+[1:v] setpts=PTS-STARTPTS [battle];
+[2:v] setpts=PTS-STARTPTS [format];
+[3:v] setpts=PTS-STARTPTS [botblogo];
+[4:v] setpts=PTS-STARTPTS [title];
+[5:v] setpts=PTS-STARTPTS [battle_time];
+[6:v] setpts=PTS-STARTPTS [avatar00];
+[base][bg] overlay=y=-'((t+0.001)/$length)*(h-H)' [tmp1];
+[tmp1][battle] overlay=1:x=1362:y=522 [tmp2];
+[tmp2][format] overlay=1:x='960-(overlay_w-50)*0.5':y=562 [tmp3];
+[tmp3][botblogo] overlay=1:x=100:y=830 [tmp4];
+[tmp4][title] overlay=1:x=691:y=108 [tmp5];
+[tmp5][battle_time] overlay=1:x='960-(overlay_w+100)*0.5':y=666 [ava00];
+[ava00][avatar00] overlay=1:x=108:y=108
+" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
+*/
+
+$ffmpeg_call = 'ffmpeg -i assets/background.png -i assets/battle-art300-%03d.png -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
+nullsrc=size=1920x1080 [base];
+[0:v] setpts=PTS-STARTPTS [bg];
+[1:v] setpts=PTS-STARTPTS [battle];
+[2:v] setpts=PTS-STARTPTS [format];
+[3:v] setpts=PTS-STARTPTS [botblogo];
+[4:v] setpts=PTS-STARTPTS [title];
+[5:v] setpts=PTS-STARTPTS [battle_time];
+'.$setpts."[base][bg] overlay=y=-'((t+0.001)/".$mp3_length.")*(h-H)' [tmp1];
+[tmp1][battle] overlay=1:x=1362:y=522 [tmp2];
+[tmp2][format] overlay=1:x='960-(overlay_w-50)*0.5':y=562 [tmp3];
+[tmp3][botblogo] overlay=1:x=100:y=830 [tmp4];
+[tmp4][title] overlay=1:x=691:y=108 [tmp5];
+[tmp5][battle_time] overlay=1:x='".$battle_offset."-(overlay_w+100)*0.5':y=666".$position.'
+" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
+
+print $ffmpeg_call;
+
+file_put_contents('assets/ffmpeg_call', $ffmpeg_call);
