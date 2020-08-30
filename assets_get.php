@@ -6,9 +6,13 @@ print_r($data);
 
 print "HANDLING BATTLE COVER ART ::\n";
 system('wget '.$data['battle']['cover_art_url'].' -O assets/battle_art');
-print "resizing to 450x450\n";
-system('convert assets/battle_art -resize 450x450 -coalesce assets/battle-art450');
+print "scanning image...";
+system('convert assets/battle_art -coalesce assets/battle_art_temp');
+$dimensions = system("identify -format '%wx%h' assets/battle_art_temp[0]");
+print "resizing from $dimensions to 450x450\n";
+system('convert -size '.$dimensions.' assets/battle_art_temp -filter box -resize 450x450 assets/battle-art450');
 // check if its animated
+$battle_art_cli = '';
 $battle_art_frames = system("identify assets/battle-art450 | sed -n 'p;$=' | tail -1");
 if ((int)$battle_art_frames > 1) {
 	print "BATTLE ART :: $battle_art_frames animated GIF frames detected\n";
@@ -80,7 +84,7 @@ nullsrc=size=1920x1080 [base];
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t "${length}" "${entry_id}.mp4"
 */
 
-$ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_loop.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
+$ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
 nullsrc=size=1920x1080 [base];
 [0:v] setpts=PTS-STARTPTS [bg];
 [1:v] setpts=PTS-STARTPTS [battle];
