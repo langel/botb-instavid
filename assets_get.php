@@ -34,7 +34,14 @@ $i = 0;
 foreach ($data['authors'] as $author) {
 	$id = $author['id'];
 	// get the image
-	system('wget http://battleofthebits.org/disk/avatars/'.$author['avatar_from_time'].' -O assets/avatar'.$id);
+	$avatar_string = $author['avatar_from_time'];
+	// XXX wait! shouldn't the api populate this??!?!
+	if ($avatar_string == '') {
+		system('wget http://battleofthebits.org/disk/debris/n00b.png -O assets/avatar'.$id);
+	}
+	else {
+		system('wget http://battleofthebits.org/disk/avatars/'.$avatar_string.' -O assets/avatar'.$id);
+	}
 	// resize
 	$target_file = "assets/avatar".$author['avatar_from_time'];
 	print "resizing avatar $target_file\n";
