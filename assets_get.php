@@ -4,7 +4,7 @@ $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 print_r($data);
 
 
-print "HANDLING BATTLE COVER ART ::\n";
+print "\nHANDLING BATTLE COVER ART ::\n";
 system('wget '.$data['battle']['cover_art_url'].' -O assets/battle_art');
 print "scanning image...";
 system('convert assets/battle_art -coalesce assets/battle_art_temp');
@@ -13,7 +13,7 @@ print "resizing from $dimensions to 450x450\n";
 system('convert -size '.$dimensions.' assets/battle_art_temp -filter box -resize 450x450 assets/battle-art450');
 // check if its animated
 $battle_art_cli = '';
-$battle_art_frames = system("identify assets/battle-art450 | sed -n 'p;$=' | tail -1");
+$battle_art_frames = exec("identify assets/battle-art450 | sed -n 'p;$=' | tail -1");
 if ((int)$battle_art_frames > 1) {
 	print "BATTLE ART :: $battle_art_frames animated GIF frames detected\n";
 	$battle_art_cli .= '-ignore_loop 0 ';
@@ -21,33 +21,37 @@ if ((int)$battle_art_frames > 1) {
 else print "BATTLE ART :: still image \n";
 
 
-print "HANDLING FORMAT ICON ::\n";
+print "\nHANDLING FORMAT ICON ::\n";
 system('wget '.$data['format']['icon_url'].' -O assets/format_icon');
 system('convert assets/format_icon -filter box -resize 64x64 -coalesce assets/format_icon.png');
 
 
-print "HANDLING AVATARS ::\n";
+print "\nHANDLING AVATARS ::\n";
 $author_count = count($data['authors']);
 $avatar_resize_to = ($author_count > 1) ? 250 : 500;
 $assets_cli = $setpts = $position = '';
 $i = 0;
 foreach ($data['authors'] as $author) {
 	$id = $author['id'];
+	$source_file = 'assets/avatar'.$id;
 	// get the image
 	$avatar_string = $author['avatar_from_time'];
 	// XXX wait! shouldn't the api populate this??!?!
 	if ($avatar_string == '') {
-		system('wget http://battleofthebits.org/disk/debris/n00b.png -O assets/avatar'.$id);
+		system('wget http://battleofthebits.org/disk/debris/n00b.png -O '.$source_file);
 	}
 	else {
-		system('wget http://battleofthebits.org/disk/avatars/'.$avatar_string.' -O assets/avatar'.$id);
+		system('wget http://battleofthebits.org/disk/avatars/'.$avatar_string.' -O '.$source_file);
 	}
 	// resize
+	$temp_file = "assets/avatarTEMP".$author['avatar_from_time'];
+	print "coalescing avatar to $temp_file\n";
+	system('convert '.$source_file.' -coalesce '.$temp_file);
 	$target_file = "assets/avatar".$author['avatar_from_time'];
-	print "resizing avatar $target_file\n";
-	system('convert assets/avatar'.$id.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' -coalesce '.$target_file);
+	print "resizing avatar to $target_file\n";
+	system('convert '.$temp_file.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' '.$target_file);
 	// check if its animated
-	$avatar_frames = system("identify $target_file | sed -n 'p;$=' | tail -1");
+	$avatar_frames = exec("identify $target_file | sed -n 'p;$=' | tail -1");
 	if ((int)$avatar_frames > 1) {
 		print "AVATAR :: $avatar_frames animated GIF frames detected\n";
 		$assets_cli .= '-ignore_loop 0 ';
@@ -64,7 +68,7 @@ foreach ($data['authors'] as $author) {
 	$i++;
 }
 
-print "DONLOAD TEH MP3 ::\n";
+print "\nDONLOAD TEH MP3 ::\n";
 system('wget "http://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
 $mp3_length = system("ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'");
 echo "media length :: $mp3_length seconds\n";

@@ -20,7 +20,7 @@ function get_wrap_at($str) {
 }
 
 
-echo "CREATING BACKGROUND :: \n";
+echo "\nCREATING BACKGROUND :: \n";
 system('wget http://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
 function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	if($x > $x1 || $y > $y1) {
@@ -62,6 +62,7 @@ imagedestroy($img);
 
 # create BotB logo
 
+echo "\nCREATING BotB LOGO :: \n";
 $text = 'battleofthebits.org';
 $font = './arial-black.ttf';
 $size = 110;
@@ -99,6 +100,7 @@ for ($k = 0; $k < 5; $k++) {
 
 # title and n00b
 
+echo "\nCREATING TITLE & AUTHORS TEXT :: \n";
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
 $scale_max = 2.5;
@@ -122,6 +124,7 @@ $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
 echo "title font size :: $title_size\n\n";
+echo $title_text."\n";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
@@ -144,6 +147,7 @@ $max_width -= $noob_left_padding;
 $scale_x = min($scale_max, $max_width / $noob_width);
 $noob_size = $size * $scale_x;
 echo "botbr font size :: $noob_size\n\n";
+echo $noob_text."\n";
 
 // create botbr name
 $color = create_color($pal['color2'], $img);
@@ -155,9 +159,11 @@ imagedestroy($img);
 
 # format icon and text
 
+echo "\nCREATING FORMAT INFO :: \n";
 $font = './Passion_One/PassionOne-Regular.ttf';
 $size = 32;
 $text = $data['format']['title'];
+echo $text."\n";
 $text_dim = imagettfbbox($size, 0, $font, $text);
 $img = imagecreatetruecolor($text_dim[2]+88,96);
 imagesavealpha($img, true);
@@ -175,10 +181,12 @@ imagedestroy($img);
 
 # battle and time
 
+echo "\nCREATING BATTLE DESCRIPTOR :: \n";
 $size = 32;
 $text = 'submitted to '.$data['battle']['title'];
 $text = wordwrap($text, 50, "\n");
 $text .= "\n".'                           on '.substr($data['datetime'], 0, 10);
+echo $text."\n";
 $text_dim = imagettfbbox($size, 0, $font, $text);
 $img = imagecreatetruecolor($text_dim[2], 246);
 imagesavealpha($img, true);
