@@ -4,7 +4,7 @@
 
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 
-system('curl http://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
+system('curl https://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
 $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
 
@@ -21,7 +21,7 @@ function get_wrap_at($str) {
 
 
 echo "\nCREATING BACKGROUND :: \n";
-system('wget http://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
+system('wget https://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
 function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	if($x > $x1 || $y > $y1) {
 		return false;

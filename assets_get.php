@@ -38,10 +38,10 @@ foreach ($data['authors'] as $author) {
 	$avatar_string = $author['avatar_from_time'];
 	// XXX wait! shouldn't the api populate this??!?!
 	if ($avatar_string == '') {
-		system('wget http://battleofthebits.org/disk/debris/n00b.png -O '.$source_file);
+		system('wget https://battleofthebits.org/disk/debris/n00b.png -O '.$source_file);
 	}
 	else {
-		system('wget http://battleofthebits.org/disk/avatars/'.$avatar_string.' -O '.$source_file);
+		system('wget https://battleofthebits.org/disk/avatars/'.$avatar_string.' -O '.$source_file);
 	}
 	// resize
 	$temp_file = "assets/avatarTEMP".$author['avatar_from_time'];
@@ -69,7 +69,7 @@ foreach ($data['authors'] as $author) {
 }
 
 print "\nDONLOAD TEH MP3 ::\n";
-system('wget "http://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
+system('wget "https://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
 $mp3_length = system("ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'");
 echo "media length :: $mp3_length seconds\n";
 
