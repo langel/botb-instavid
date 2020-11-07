@@ -128,8 +128,8 @@ echo $title_text."\n";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
-$y = floor($title_size * 0.92);
-$bbox = imagettftext($img, $title_size, 0, 25, $y, $color, $font, $title_text); 
+$title_y = floor($title_size * 0.92);
+$bbox = imagettftext($img, $title_size, 0, 25, $title_y, $color, $font, $title_text); 
 
 // figure out botbr name size
 if (count($data['authors']) > 1) {
@@ -142,17 +142,23 @@ $wrap_at = get_wrap_at($noob_text);
 $noob_text = wordwrap($noob_text, $wrap_at, "\n\r");
 $noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
+$noob_height = "\n". $size * (substr_count($noob_text, "\n") + 2);
 $noob_left_padding = 75;
 $max_width -= $noob_left_padding;
-$scale_x = min($scale_max, $max_width / $noob_width);
-$noob_size = $size * $scale_x;
+// art is at y=522
+// title at y=108
+// 522-108=414
+$max_height = 420 - $title_y;
+$scale_x = $max_width / $noob_width;
+$scale_y = $max_height / $title_height;
+$noob_size = $size * min($scale_x, $scale_y, $scale_max);
 echo "botbr font size :: $noob_size\n\n";
 echo $noob_text."\n";
 
 // create botbr name
 $color = create_color($pal['color2'], $img);
-$y = floor($noob_size * 0.92) + $bbox[1] + 25;
-imagettftext($img, $noob_size, 0, $noob_left_padding, $y + 27, $color, $font, $noob_text); 
+$name_y = floor($noob_size * 0.92) + $bbox[1] + 25;
+imagettftext($img, $noob_size, 0, $noob_left_padding, $name_y + 27, $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
 
