@@ -9,12 +9,10 @@ $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
 
 function get_wrap_at($str) {
-	$wrap_at = 25;
+	$wrap_at = 20;
 	$str_len = strlen($str);
 	echo "  wrappable string length : $str_len\n";
-	if ($str_len > 40) $wrap_at = ceil($str_len * 0.6);
-	if ($str_len > 80) $wrap_at = ceil($str_len * 0.4);
-	if ($str_len > 120) $wrap_at = ceil($str_len * 0.3);
+	if ($str_len > 40) $wrap_at = 34;
 	echo "  wrapping lines at $wrap_at characters\n\n";
 	return $wrap_at;
 }
@@ -148,7 +146,7 @@ $max_width -= $noob_left_padding;
 // art is at y=522
 // title at y=108
 // 522-108=414
-$max_height = 420 - $title_y;
+$max_height = 420 - $title_y + 42;
 $scale_x = $max_width / $noob_width;
 $scale_y = $max_height / $title_height;
 $noob_size = $size * min($scale_x, $scale_y, $scale_max);

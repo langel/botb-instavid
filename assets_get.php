@@ -35,19 +35,13 @@ foreach ($data['authors'] as $author) {
 	$id = $author['id'];
 	$source_file = 'assets/avatar'.$id;
 	// get the image
-	$avatar_string = $author['avatar_from_time'];
-	// XXX wait! shouldn't the api populate this??!?!
-	if ($avatar_string == '') {
-		system('wget https://battleofthebits.org/disk/debris/n00b.png -O '.$source_file);
-	}
-	else {
-		system('wget https://battleofthebits.org/disk/avatars/'.$avatar_string.' -O '.$source_file);
-	}
+	$avatar_string = substr($author['avatar_from_time'], strpos($author['avatar_from_time'], '/', -1));
+	system('wget https://battleofthebits.org/'.$avatar_string.' -O '.$source_file);
 	// resize
-	$temp_file = "assets/avatarTEMP".$author['avatar_from_time'];
+	$temp_file = "assets/avatarTEMP".$author['id'];
 	print "coalescing avatar to $temp_file\n";
 	system('convert '.$source_file.' -coalesce '.$temp_file);
-	$target_file = "assets/avatar".$author['avatar_from_time'];
+	$target_file = "assets/avatar".$author['id'];
 	print "resizing avatar to $target_file\n";
 	system('convert '.$temp_file.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' '.$target_file);
 	// check if its animated
