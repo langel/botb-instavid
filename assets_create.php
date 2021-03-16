@@ -162,16 +162,16 @@ else $noob_text = $data['botbr']['name'];
 $noob_text = get_wrapped_text($noob_text);
 $noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
-$noob_height = "\n". $size * (substr_count($noob_text, "\n") + 2);
+$noob_height = $noob_dim[1];
 $noob_left_padding = 75;
 $max_width -= $noob_left_padding;
 // art is at y=522
 // title at y=108
 // 522-108=414
-$max_height = 256 - $title_y;
+$max_height = 550 - $title_y;
 $scale_x = $max_width / $noob_width;
 $scale_y = $max_height / $noob_height;
-$noob_size = $size * min($scale_x, $scale_y, $scale_max);
+$noob_size = $size * min($scale_x, $scale_y);
 echo "botbr font size :: $noob_size\n\n";
 echo $noob_text."\n";
 
