@@ -8,13 +8,36 @@ system('curl https://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['p
 $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
 
-function get_wrap_at($str) {
-	$wrap_at = 20;
+function get_wrapped_words($str, $wrap_at, $cut_long_wrds = false) {
+	return wordwrap($str, $wrap_at, "\n\r");
+}
+
+function get_wrapped_text($str) {
+	$wrap_at = 24;
 	$str_len = strlen($str);
+	$text = $str;
 	echo "  wrappable string length : $str_len\n";
-	if ($str_len > 40) $wrap_at = 34;
+	if ($str_len > $wrap_at) {
+		$text = get_wrapped_words($str, $wrap_at);
+	}
+	if (substr_count($text, "\n\r") > 1) {
+		$wrap_at = $str_len * 0.56;
+		$text = get_wrapped_words($str, $wrap_at);
+	}
+	if (substr_count($text, "\n\r") > 1) {
+		$wrap_at = $str_len * 0.666;
+		$text = get_wrapped_words($str, $wrap_at);
+	}
+	if (substr_count($text, "\n\r") > 1) {
+		$wrap_at = $str_len * 0.75;
+		$text = get_wrapped_words($str, $wrap_at);
+	}
+	if (substr_count($text, "\n\r") > 1) {
+		$wrap_at = $str_len * 0.56;
+		$text = get_wrapped_words($str, $wrap_at, true);
+	}
 	echo "  wrapping lines at $wrap_at characters\n\n";
-	return $wrap_at;
+	return $text;
 }
 
 
@@ -111,13 +134,13 @@ $trans = imagecolorallocatealpha($img, 0, 0, 0, 127);
 imagefill($img, 0, 0, $trans);
 
 // figure out title size
-$wrap_at = get_wrap_at($data['title']);
-$title_text = wordwrap($data['title'], $wrap_at, "\n\r");
+$title_text = get_wrapped_text($data['title']);
 $title_dim = imagettfbbox($size, 0, $font, $title_text);
 $title_width = $title_dim[2];
 $title_height = "\n". $size * (substr_count($title_text, "\n") + 2);
 $max_width = 1920 - 716 - 108;
-$max_height = 300;
+//$max_height = 300;
+$max_height = 256;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
@@ -136,8 +159,7 @@ if (count($data['authors']) > 1) {
 	$noob_text = implode(' & ', $author_list);
 }
 else $noob_text = $data['botbr']['name'];
-$wrap_at = get_wrap_at($noob_text);
-$noob_text = wordwrap($noob_text, $wrap_at, "\n\r");
+$noob_text = get_wrapped_text($noob_text);
 $noob_dim = imagettfbbox($size, 0, $font, $noob_text);
 $noob_width = $noob_dim[2];
 $noob_height = "\n". $size * (substr_count($noob_text, "\n") + 2);
@@ -146,9 +168,9 @@ $max_width -= $noob_left_padding;
 // art is at y=522
 // title at y=108
 // 522-108=414
-$max_height = 420 - $title_y + 42;
+$max_height = 256 - $title_y;
 $scale_x = $max_width / $noob_width;
-$scale_y = $max_height / $title_height;
+$scale_y = $max_height / $noob_height;
 $noob_size = $size * min($scale_x, $scale_y, $scale_max);
 echo "botbr font size :: $noob_size\n\n";
 echo $noob_text."\n";
@@ -156,6 +178,7 @@ echo $noob_text."\n";
 // create botbr name
 $color = create_color($pal['color2'], $img);
 $name_y = floor($noob_size * 0.92) + $bbox[1] + 25;
+echo "y offset = $name_y\n\n";
 imagettftext($img, $noob_size, 0, $noob_left_padding, $name_y + 27, $color, $font, $noob_text); 
 imagepng($img, 'assets/title.png');
 imagedestroy($img);
