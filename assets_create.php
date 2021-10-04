@@ -4,9 +4,19 @@
 
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 
-system('curl https://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
+system('curl -k https://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
 $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
+
+// returns x,y array of box dimensions
+function get_text_dimensions($size, $angle, $font, $text) {
+	$text_dim = imagettfbbox($size, $angle, $font, $text);
+	$dim = [
+		abs($text_dim[6]) + abs($text_dim[2]),
+		abs($text_dim[7]) + abs($text_dim[3])
+	];
+	return $dim;
+}
 
 function get_wrapped_words($str, $wrap_at, $cut_long_wrds = false) {
 	return wordwrap($str, $wrap_at, "\n\r");
@@ -18,9 +28,6 @@ function get_wrapped_text($str) {
 	$text = $str;
 	echo "  wrappable string length : $str_len\n";
 	if ($str_len > $wrap_at) {
-		$text = get_wrapped_words($str, $wrap_at);
-	}
-	if (substr_count($text, "\n\r") > 1) {
 		$wrap_at = $str_len * 0.56;
 		$text = get_wrapped_words($str, $wrap_at);
 	}
@@ -42,7 +49,7 @@ function get_wrapped_text($str) {
 
 
 echo "\nCREATING BACKGROUND :: \n";
-system('wget https://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
+system('wget --no-check-certificate https://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
 function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	if($x > $x1 || $y > $y1) {
 		return false;
@@ -121,7 +128,7 @@ for ($k = 0; $k < 5; $k++) {
 
 # title and n00b
 
-echo "\nCREATING TITLE & AUTHORS TEXT :: \n";
+echo "\nCREATING TITLE TEXT :: \n";
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
 $scale_max = 2.5;
@@ -135,17 +142,18 @@ imagefill($img, 0, 0, $trans);
 
 // figure out title size
 $title_text = get_wrapped_text($data['title']);
-$title_dim = imagettfbbox($size, 0, $font, $title_text);
-$title_width = $title_dim[2];
-$title_height = "\n". $size * (substr_count($title_text, "\n") + 2);
+$title_dim = get_text_dimensions($size, 0, $font, $title_text);
+$title_width = $title_dim[0];
+$title_height = $title_dim[1];
+//$title_height = "\n". $size * (substr_count($title_text, "\n") + 2);
 $max_width = 1920 - 716 - 108;
 //$max_height = 300;
 $max_height = 256;
 $scale_x = $max_width / $title_width;
 $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
-echo "title font size :: $title_size\n\n";
 echo $title_text."\n";
+echo "title font size :: $title_size\n\n";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
@@ -153,6 +161,7 @@ $title_y = floor($title_size * 0.92);
 $bbox = imagettftext($img, $title_size, 0, 25, $title_y, $color, $font, $title_text); 
 
 // figure out botbr name size
+echo "\nCREATING AUTHORS TEXT :: \n";
 if (count($data['authors']) > 1) {
 	$author_list = [];
 	foreach ($data['authors'] as $author) $author_list[] = $author['name'];
@@ -160,18 +169,21 @@ if (count($data['authors']) > 1) {
 }
 else $noob_text = $data['botbr']['name'];
 $noob_text = get_wrapped_text($noob_text);
-$noob_dim = imagettfbbox($size, 0, $font, $noob_text);
-$noob_width = $noob_dim[2];
+$noob_dim = get_text_dimensions($size, 0, $font, $noob_text);
+$noob_width = $noob_dim[0];
 $noob_height = $noob_dim[1];
+echo "noob_dim: $noob_width x $noob_height\n";
 $noob_left_padding = 75;
 $max_width -= $noob_left_padding;
 // art is at y=522
 // title at y=108
 // 522-108=414
-$max_height = 550 - $title_y;
+$max_height = 420 - $title_y - 42 - $title_height - 27;
+echo "nooob     max_width: $max_width     noob_width: $noob_width     max_height :$max_height     noob_height: $noob_height\n";
 $scale_x = $max_width / $noob_width;
 $scale_y = $max_height / $noob_height;
-$noob_size = $size * min($scale_x, $scale_y);
+echo "scale_x: $scale_x    scale_y: $scale_y     scale_max: $scale_max\n\n";
+$noob_size = $size * min($scale_x, $scale_y, $scale_max);
 echo "botbr font size :: $noob_size\n\n";
 echo $noob_text."\n";
 
