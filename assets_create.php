@@ -66,9 +66,9 @@ function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 			);
 	$steps = $y1 - $y;
 	for($i = 0; $i < $steps; $i++) {
-		$r = $s[0] - ((($s[0]-$e[0])/$steps)*$i);
-		$g = $s[1] - ((($s[1]-$e[1])/$steps)*$i);
-		$b = $s[2] - ((($s[2]-$e[2])/$steps)*$i);
+		$r = $s[0] - (int)((($s[0]-$e[0])/$steps)*$i);
+		$g = $s[1] - (int)((($s[1]-$e[1])/$steps)*$i);
+		$b = $s[2] - (int)((($s[2]-$e[2])/$steps)*$i);
 		$color = imagecolorallocate($img,$r,$g,$b);
 		imagefilledrectangle($img,$x,$y+$i,$x1,$y+$i+1,$color);
 	}
