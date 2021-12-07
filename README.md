@@ -1,3 +1,5 @@
+Dependencies you'll need from whatever package manager you are stuck with: ffmpeg, imagemagick, php 
+
 # sloppy notes that will become greatness
 
 instagram images are 1080x1080
