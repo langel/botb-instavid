@@ -5,7 +5,6 @@ if (count($argv) < 3) {
 	die();
 }
 
-include_once('text-tools.php');
 
 $page = file_get_contents($argv[1]);
 $battle_id = $argv[2];
@@ -26,7 +25,6 @@ $track_count = substr_count($page, "track-title");
 
 echo "$track_count tracks found \n\n";
 
-/*
 $track = $page;
 $tracks = [];
 for ($i = 0; $i < $track_count; $i++) {
@@ -43,19 +41,7 @@ for ($i = 0; $i < $track_count; $i++) {
 }
 unlink('trackdata.json');
 
-$track_ids = [];
-echo "\n\n";
 
-for ($i = 0; $i < $track_count; $i++) {
-	echo $tracks[$i]['id'].' '.$tracks[$i]['authors_display'].' - '.$tracks[$i]['title']."\n";
-	$track_ids[] = $tracks[$i]['id'];
-}
-
-echo "\n\n";
-echo implode(" ", $track_ids);
-echo "\n";
-
-*/
 
 echo "\nCREATING THUMBNAIL ::\n";
 mkdir('assets');
@@ -71,21 +57,21 @@ system('wget --no-check-certificate '.$battle['cover_art_url'].' -O assets/battl
 print "scanning image...";
 system('convert assets/battle_art -coalesce assets/battle_art_temp');
 $dimensions = system("identify -format '%wx%h' assets/battle_art_temp[0]");
-print "resizing from $dimensions to 900x900\n";
-system('convert -size '.$dimensions.' assets/battle_art_temp -filter box -resize 900x900 assets/battle-art900');
-$battle_art = imagecreatefromstring(file_get_contents('assets/battle-art900'));
+print "resizing from $dimensions to 1080x1080\n";
+system('convert -size '.$dimensions.' assets/battle_art_temp -filter hermite -resize 1080x1080 assets/battle-art1080');
+$battle_art = imagecreatefromstring(file_get_contents('assets/battle-art1080'));
 // convert battle art to truecolor if necessary
 if (!imageistruecolor($battle_art)) {
-	$temp = imagecreatetruecolor(900, 900);
-	imagecopy($temp, $battle_art, 0, 0, 0, 0, 900, 900);
+	$temp = imagecreatetruecolor(1080, 1080);
+	imagecopy($temp, $battle_art, 0, 0, 0, 0, 1080, 1080);
 	imagedestroy($battle_art);
 	$battle_art = $temp;
 }
 
 // build colors from battle art
 echo "\nfinding colors from battle art:\n";
-$battle_temp = imagecreatetruecolor(900, 900);
-imagecopy($battle_temp, $battle_art, 0, 0, 0, 0, 900, 900);
+$battle_temp = imagecreatetruecolor(1080, 1080);
+imagecopy($battle_temp, $battle_art, 0, 0, 0, 0, 1080, 1080);
 imagetruecolortopalette($battle_temp, false, 255);
 $bg_color = imagecolorclosest($battle_temp, 33, 25, 40);
 $bg_color = imagecolorsforindex($battle_temp, $bg_color);
@@ -103,44 +89,24 @@ imagefilledrectangle($img, 0, 0, 1920, 1080, $bg_color);
 imagefilledrectangle($img, 0, 0, 1920, 1080, IMG_COLOR_TILED);
 
 // battle art
-imagecopy($img, $battle_art, 90, 90, 0, 0, 900, 900);
-
-echo "\nCREATING BotB LOGO :: \n";
-$text = 'battleofthebits.org';
-$font = './arial-black.ttf';
-$size = 72;
-$spacing = -11;
-$x = 1080;
-for ($i = 0; $i < strlen($text); $i++) {
-	$bbox = imagettftext($img, $size, 0, $x, 990, $fg_color, $font, $text[$i]);
-	$x += $spacing + ($bbox[2] - $bbox[0]);
-}
-
-$y = 90;
-
-echo "\nCREATING TITLE TEXT :: \n";
-$font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
-$size = 100;
-$scale_max = 2.5;
-//$text_img = imagecreatetruecolor(750, 900);
-$text = get_wrapped_text($battle['title']);
-$dim = get_text_dimensions($size, 0, $font, $text);
-$scale = 750 / $dim[0];
-$title_size = $size * $scale;
-$y += $title_size;
-imagettftext($img, $title_size, 0, 1080, $y, $fg_color, $font, $text);
-$y += $dim[1] * $scale;
-
-// format icons
-
-// date completed
-$size = 48;
-$text = "originally completed on\n                                ".substr($battle['end'], 0, 10);
-$dim = get_text_dimensions($size, 0, $font, $text);
-imagettftext($img, $size, 0, 1080, 750, $fg_color, $font, $text);
+imagecopy($img, $battle_art, 420, 0, 0, 0, 1080, 1080);
 
 // save thumbnail
 imagepng($img, "battle_{$battle['id']}_thumbnail.png");
 
 
 system('rm -rf assets');
+
+
+
+$track_ids = [];
+echo "\n\n";
+
+for ($i = 0; $i < $track_count; $i++) {
+	echo $tracks[$i]['id'].' '.$tracks[$i]['authors_display'].' - '.$tracks[$i]['title']."\n";
+	$track_ids[] = $tracks[$i]['id'];
+}
+
+echo "\n";
+echo implode(" ", $track_ids);
+echo "\n\n";
