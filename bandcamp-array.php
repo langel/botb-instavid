@@ -27,17 +27,27 @@ echo "$track_count tracks found \n\n";
 
 $track = $page;
 $tracks = [];
+$track_ids = [];
+$tracksout = '';
 for ($i = 0; $i < $track_count; $i++) {
 	$page = substr($page, strpos($page, "track-title") + 13);
 	$page = substr($page, strpos($page, "-") + 2);
-	$track = html_entity_decode(substr($page, 0, strpos($page, "</")));
+	$track = html_entity_decode(substr($page, 0, strpos($page, "</")), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401);
 	echo "$track\n";
 	$url = 'https://battleofthebits.org/api/v1/entry/list?filters=battle_id~'.$battle_id.'^title~'.urlencode($track);
 	echo "$url\n";
 	system('curl -k '.$url.' > trackdata.json', $ass);
-	$trackdata = json_decode(file_get_contents('trackdata.json'), true)[0];
-	echo $trackdata['id'].' '.$trackdata['authors_display'].' - '.$trackdata['title']."\n";
-	$tracks[] = $trackdata;
+	if (file_get_contents('trackdata.json') == '[]') {
+		$trackdata = "FAILURE TO LOCATE :: $track\n";
+		$tracks_id[] = "FAIL\n";
+	}
+	else {
+		$trackdata = json_decode(file_get_contents('trackdata.json'), true)[0];
+		$tracks_id[] = $trackdata['id'];
+		$trackdata = $trackdata['id'].' '.$trackdata['authors_display'].' - '.$trackdata['title']."\n";
+	}
+	echo $trackdata;
+	$tracksout .= $trackdata;
 }
 unlink('trackdata.json');
 
@@ -99,13 +109,8 @@ system('rm -rf assets');
 
 
 
-$track_ids = [];
 echo "\n\n";
-
-for ($i = 0; $i < $track_count; $i++) {
-	echo $tracks[$i]['id'].' '.$tracks[$i]['authors_display'].' - '.$tracks[$i]['title']."\n";
-	$track_ids[] = $tracks[$i]['id'];
-}
+echo $tracksout;
 
 echo "\n";
 echo implode(" ", $track_ids);
