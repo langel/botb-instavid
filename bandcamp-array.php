@@ -29,6 +29,8 @@ $track = $page;
 $tracks = [];
 $track_ids = [];
 $tracksout = '';
+$tracksfail = '';
+$ttllen = 0;
 for ($i = 0; $i < $track_count; $i++) {
 	$page = substr($page, strpos($page, "track-title") + 13);
 	$page = substr($page, strpos($page, "-") + 2);
@@ -39,15 +41,18 @@ for ($i = 0; $i < $track_count; $i++) {
 	system('curl -k '.$url.' > trackdata.json', $ass);
 	if (file_get_contents('trackdata.json') == '[]') {
 		$trackdata = "FAILURE TO LOCATE :: $track\n";
-		$tracks_id[] = "FAIL\n";
+		$trackfail .= $trackdata;
+		//$track_ids[] = "FAIL";
 	}
 	else {
 		$trackdata = json_decode(file_get_contents('trackdata.json'), true)[0];
-		$tracks_id[] = $trackdata['id'];
-		$trackdata = $trackdata['id'].' '.$trackdata['authors_display'].' - '.$trackdata['title']."\n";
+		$track_ids[] = $trackdata['id'];
+		$trackline = gmdate("G:i:s", round($ttllen)).' '.$trackdata['authors_display'].' - '.$trackdata['title']."\n";
+		$ttllen += floatval($trackdata['length']);
+		$trackdata = $trackline;
+		$tracksout .= $trackdata;
 	}
 	echo $trackdata;
-	$tracksout .= $trackdata;
 }
 unlink('trackdata.json');
 
@@ -107,7 +112,13 @@ imagepng($img, "battle_{$battle['id']}_thumbnail.png");
 
 system('rm -rf assets');
 
+echo "\n\n";
+echo $tracksfail;
 
+echo "\n\noriginally released ASDASDASD September 21, 2011";
+echo "\nall tracks available free here:\nhttps://battleofthebits.org/arena/Battle/".$battle['id'];
+echo "\n";
+echo "\nsupport BotB on bandcamp here:\n".$argv[1]."\nhttps://www.patreon.com/battleofthebits";
 
 echo "\n\n";
 echo $tracksout;
