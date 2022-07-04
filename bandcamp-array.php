@@ -50,8 +50,8 @@ for ($i = 0; $i < $track_count; $i++) {
 		$track_ids[] = $trackdata['id'];
 		$trackline = gmdate("G:i:s", round($ttllen)).' '.$trackdata['authors_display'].' - '.$trackdata['title']."\n";
 		$ttllen += floatval($trackdata['length']);
-		$trackdata = $trackline;
-		$tracksout .= $trackdata;
+		$tracksout .= $trackline;
+		$trackdata = $trackline . $trackdata['id'] . ' ' . $trackdata['length'] . ' ' . gmdate("i:s", round($trackdata['length'])) . "\n\n";
 	}
 	echo $trackdata;
 }
