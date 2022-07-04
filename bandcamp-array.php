@@ -33,9 +33,10 @@ $tracksfail = '';
 $ttllen = 0;
 for ($i = 0; $i < $track_count; $i++) {
 	$page = substr($page, strpos($page, "track-title") + 13);
-	$page = substr($page, strpos($page, "-") + 2);
+	$page = substr($page, strpos($page, " - ") + 3);
 	$track = html_entity_decode(substr($page, 0, strpos($page, "</")), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401);
 	echo "$track\n";
+	$track = str_replace("~", "~~", $track);
 	$url = 'https://battleofthebits.org/api/v1/entry/list?filters=battle_id~'.$battle_id.'^title~'.urlencode($track);
 	echo "$url\n";
 	system('curl -k '.$url.' > trackdata.json', $ass);
