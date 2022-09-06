@@ -5,7 +5,7 @@ print_r($data);
 
 
 print "\nHANDLING BATTLE COVER ART ::\n";
-system('wget --no-check-certificate '.$data['battle']['cover_art_url'].' -O assets/battle_art');
+system('wget --no-check-certificate https://battleofthebits.org'.$data['battle']['cover_art_url'].' -O assets/battle_art');
 print "scanning image...";
 system('convert assets/battle_art -coalesce assets/battle_art_temp');
 $dimensions = system("identify -format '%wx%h' assets/battle_art_temp[0]");
