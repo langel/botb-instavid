@@ -4,12 +4,14 @@ if (count($argv) < 3) {
 	echo "give it a botb release url and corresponding battle_id -- it'll try to find entry_id's and spew them onscreen\n";
 	die();
 }
-
+$bandcamp = true; // ripping from bandcamp 
+// (false = using hard coded playlist array)
+$api_url = 'https://battleofthebits.org/api/v1/';
 
 $page = file_get_contents($argv[1]);
 $battle_id = $argv[2];
 
-$url = 'https://battleofthebits.org/api/v1/battle/load/'.$battle_id;
+$url = $api_url . 'battle/load/'.$battle_id;
 system('curl -k '.$url.' > battledata.json', $ass);
 $battle = json_decode(file_get_contents('battledata.json'), true);
 unlink('battledata.json');
@@ -31,13 +33,25 @@ $track_ids = [];
 $tracksout = '';
 $tracksfail = '';
 $ttllen = 0;
+
+
+// winter chip code
+$tracks = [56, 60, 58, 61, 69, 62, 63, 80, 81, 57, 64, 71, 72, 73, 53, 74, 59, 77, 75, 76, 55, 68, 78, 79, 82, 83, 54, 70, 65, 66, 67];
+$track_count = count($tracks);
+$bandcamp = false;
+
 for ($i = 0; $i < $track_count; $i++) {
-	$page = substr($page, strpos($page, "track-title") + 13);
-	$page = substr($page, strpos($page, " - ") + 3);
-	$track = html_entity_decode(substr($page, 0, strpos($page, "</")), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401);
-	echo "$track\n";
-	$track = str_replace("~", "~~", $track);
-	$url = 'https://battleofthebits.org/api/v1/entry/list?filters=battle_id~'.$battle_id.'^title~'.urlencode($track);
+	if ($bandcamp) {
+		$page = substr($page, strpos($page, "track-title") + 13);
+		$page = substr($page, strpos($page, " - ") + 3);
+		$track = html_entity_decode(substr($page, 0, strpos($page, "</")), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401);
+		echo "$track\n";
+		$track = str_replace("~", "~~", $track);
+		$url = $api_url . 'entry/list?filters=battle_id~'.$battle_id.'^title~'.urlencode($track);
+	}
+	else {
+		$url = $api_url . 'entry/list?filters=id~' . $tracks[$i];
+	}
 	echo "$url\n";
 	system('curl -k '.$url.' > trackdata.json', $ass);
 	if (file_get_contents('trackdata.json') == '[]') {
