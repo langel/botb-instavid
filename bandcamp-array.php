@@ -2,43 +2,55 @@
 
 if (count($argv) < 3) {
 	echo "give it a botb release url and corresponding battle_id -- it'll try to find entry_id's and spew them onscreen\n";
-	die();
+//	die();
 }
-$bandcamp = true; // ripping from bandcamp 
+$bandcamp = false; // ripping from bandcamp 
 // (false = using hard coded playlist array)
 $api_url = 'https://battleofthebits.org/api/v1/';
 
-$page = file_get_contents($argv[1]);
-$battle_id = $argv[2];
+function battle_from_id($battle_id) {
+	GLOBAL $api_url;
+	$url = $api_url . 'battle/load/'.$battle_id;
+	system('curl -k '.$url.' > battledata.json', $ass);
+	$battle = json_decode(file_get_contents('battledata.json'), true);
+	unlink('battledata.json');
+	return $battle;
+}
 
-$url = $api_url . 'battle/load/'.$battle_id;
-system('curl -k '.$url.' > battledata.json', $ass);
-$battle = json_decode(file_get_contents('battledata.json'), true);
-unlink('battledata.json');
-
-
-$title = substr($page, strpos($page, '"trackTitle">') + 13);
-$title = substr($title, 0, strpos($title, '</h2>'));
-$title = trim($title);
-
-echo "$battle_id : $title \n";
-
-$track_count = substr_count($page, "track-title");
-
-echo "$track_count tracks found \n\n";
-
-$track = $page;
-$tracks = [];
+$track_count = 0;
 $track_ids = [];
 $tracksout = '';
 $tracksfail = '';
 $ttllen = 0;
 
+if ($bandcamp) {
+	$page = file_get_contents($argv[1]);
+	$battle_id = $argv[2];
 
-// winter chip code
-$tracks = [56, 60, 58, 61, 69, 62, 63, 80, 81, 57, 64, 71, 72, 73, 53, 74, 59, 77, 75, 76, 55, 68, 78, 79, 82, 83, 54, 70, 65, 66, 67];
-$track_count = count($tracks);
-$bandcamp = false;
+	$battle = battle_from_id($battle_id);
+
+	$title = substr($page, strpos($page, '"trackTitle">') + 13);
+	$title = substr($title, 0, strpos($title, '</h2>'));
+	$title = trim($title);
+
+	echo "$battle_id : $title \n";
+
+	$track_count = substr_count($page, "track-title");
+
+	echo "$track_count tracks found \n\n";
+
+	$track = $page;
+	$tracks = [];
+}
+else {
+	// manual mix mode
+	$battle_id = 25;
+	$battle = battle_from_id($battle_id);
+print_r($battle);
+	$tracks = [450, 438, 439, 303, 387, 296, 307, 277, 320, 425, 452, 275, 419, 344, 293, 440, 273, 401, 435, 433, 290, 418, 449, 295, 358, 422, 268, 260, 322, 261, 389, 262, 446, 284, 347, 321, 444, 259, 445];
+	$track_count = count($tracks);
+	$bandcamp = false;
+};
 
 for ($i = 0; $i < $track_count; $i++) {
 	if ($bandcamp) {
@@ -124,20 +136,26 @@ imagecopy($img, $battle_art, 420, 0, 0, 0, 1080, 1080);
 // save thumbnail
 imagepng($img, "battle_{$battle['id']}_thumbnail.png");
 
-
 system('rm -rf assets');
 
-echo "\n\n";
-echo $tracksfail;
+$notes = '';
+$notes .= "\n\n";
+$notes .= $tracksfail;
 
-echo "\n\noriginally released ASDASDASD September 21, 2011";
-echo "\nall tracks available free here:\nhttps://battleofthebits.org/arena/Battle/".$battle['id'];
-echo "\n";
-echo "\nsupport BotB on bandcamp here:\n".$argv[1]."\nhttps://www.patreon.com/battleofthebits";
+$notes .= "\n\noriginally released ASDASDASD September 21, 2011";
+$notes .= "\nall tracks available free here:\nhttps://battleofthebits.org/arena/Battle/".$battle['id'];
+$notes .= "\n";
+$notes .= "\nsupport BotB on bandcamp here:";
+if ($bandcamp) $notes .= "\n".$argv[1];
+else $notes .= "\nbattleofthebits.bandcamp.com";
+$notes .= "\nhttps://www.patreon.com/battleofthebits";
 
-echo "\n\n";
-echo $tracksout;
+$notes .= "\n\n";
+$notes .= $tracksout;
 
-echo "\n";
-echo implode(" ", $track_ids);
-echo "\n\n";
+$notes .= "\n";
+$notes .= implode(" ", $track_ids);
+$notes .= "\n\n";
+
+echo $notes;
+file_put_contents("comp.txt", $notes);
