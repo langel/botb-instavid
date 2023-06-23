@@ -4,7 +4,7 @@
 
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 
-system('curl -k https://battleofthebits.org/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
+system('curl -k https://battleofthebits.com/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
 $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
 
@@ -48,7 +48,7 @@ function get_wrapped_text($str) {
 }
 
 echo "\nCREATING BACKGROUND :: \n";
-system('wget --no-check-certificate https://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
+system('wget --no-check-certificate https://battleofthebits.com/disk/debris/botb_bg.png -O assets/botb_bg.png');
 function image_gradientrect($img,$x,$y,$x1,$y1,$start,$end) {
 	if($x > $x1 || $y > $y1) {
 		return false;
@@ -90,7 +90,7 @@ imagedestroy($img);
 # create BotB logo
 
 echo "\nCREATING BotB LOGO :: \n";
-$text = 'battleofthebits.org';
+$text = 'battleofthebits.com';
 $font = './arial-black.ttf';
 $size = 110;
 $spacing = -15;

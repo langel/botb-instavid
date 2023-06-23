@@ -6,7 +6,8 @@ if (count($argv) < 3) {
 }
 $bandcamp = false; // ripping from bandcamp 
 // (false = using hard coded playlist array)
-$api_url = 'https://battleofthebits.org/api/v1/';
+$domain = 'https://battleofthebits.com';
+$api_url = $domain . '/api/v1/';
 
 function battle_from_id($battle_id) {
 	GLOBAL $api_url;
@@ -90,7 +91,7 @@ mkdir('assets');
 $img = imagecreatetruecolor(1920, 1080);
 
 print_r($battle);
-system('wget --no-check-certificate https://battleofthebits.org/disk/debris/botb_bg.png -O assets/botb_bg.png');
+system('wget --no-check-certificate '. $domain .'/disk/debris/botb_bg.png -O assets/botb_bg.png');
 $bg_pattern = imagecreatefrompng('assets/botb_bg.png');
 imagesettile($img, $bg_pattern);
 

@@ -36,7 +36,7 @@ foreach ($data['authors'] as $author) {
 	$source_file = 'assets/avatar'.$id;
 	// get the image
 	$avatar_string = substr($author['avatar_from_time'], strpos($author['avatar_from_time'], '/', -1));
-	system('wget --no-check-certificate https://battleofthebits.org/'.$avatar_string.' -O '.$source_file);
+	system('wget --no-check-certificate https://battleofthebits.com/'.$avatar_string.' -O '.$source_file);
 	// resize
 	$temp_file = "assets/avatarTEMP".$author['id'];
 	print "coalescing avatar to $temp_file\n";
@@ -63,7 +63,7 @@ foreach ($data['authors'] as $author) {
 }
 
 print "\nDONLOAD TEH MP3 ::\n";
-system('wget --no-check-certificate "https://battleofthebits.org/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
+system('wget --no-check-certificate "https://battleofthebits.com/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
 $mp3_length = system("ffprobe assets/mp3 2>&1 | grep Duration|awk '{print $2}' | tr -d , | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'");
 echo "media length :: $mp3_length seconds\n";
 

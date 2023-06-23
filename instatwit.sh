@@ -3,8 +3,8 @@
 visual_id=$1
 audio_id=$2
 
-wget https://battleofthebits.org/player/View/$visual_id/asset.gif
-wget https://battleofthebits.org/player/EntryPlay/$audio_id/asset.mp3
+wget https://battleofthebits.com/player/View/$visual_id/asset.gif
+wget https://battleofthebits.com/player/EntryPlay/$audio_id/asset.mp3
 
 echo -e "resizing image\n"
 convert asset.gif -coalesce asset.temp.gif
