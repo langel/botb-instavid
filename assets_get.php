@@ -28,7 +28,9 @@ system('convert assets/format_icon -filter box -resize 64x64 -coalesce assets/fo
 
 print "\nHANDLING AVATARS ::\n";
 $author_count = count($data['authors']);
-$avatar_resize_to = ($author_count > 1) ? 250 : 500;
+$avatar_resize_to = 500;
+if ($author_count > 1) $avatar_resize_to = 250;
+if ($author_count > 5) $avatar_resize_to = 125;
 $assets_cli = $setpts = $position = '';
 $i = 0;
 foreach ($data['authors'] as $author) {
@@ -55,9 +57,16 @@ foreach ($data['authors'] as $author) {
 	// create all the other ffmpeg crap
 	$setpts .= '['.($i + 6).':v] setpts=PTS-STARTPTS [avatar'.$id.'];'."\n";
 	$x = $y = 108;
-	if ($i % 2) $x += 250;
-	if ($author_count == 2 && $i == 1) $y = 108 + 250;
-	else $y += floor($i / 2) * 250;
+	if ($avatar_resize_to == 250) {
+		if ($i % 2) $x += 250;
+		if ($author_count == 2 && $i == 1) $y = 108 + 250;
+		else $y += floor($i / 2) * 250;
+	}
+	if ($avatar_resize_to == 125) {
+		$spacing = 125 + floor(125 / 4);
+		$x += ($i % 3) * $spacing;
+		$y += floor($i / 3) * ($spacing * 0.9);
+	}
 	$position .= " [ava0".$i."];\n[ava0".$i."][avatar".$id."] overlay=1:x=".$x.":y=".$y;
 	$i++;
 }
