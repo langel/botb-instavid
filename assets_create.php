@@ -25,6 +25,7 @@ function get_wrapped_words($str, $wrap_at, $cut_long_wrds = false) {
 function get_wrapped_text($str) {
 	$wrap_at = 24;
 	$str_len = strlen($str);
+	if ($str_len > 96) $wrap_at = 48;
 	if ($str_len > 112) $wrap_at = 56;
 	$text = $str;
 	echo "  wrappable string length : $str_len\n";
