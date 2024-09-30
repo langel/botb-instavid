@@ -25,6 +25,7 @@ function get_wrapped_words($str, $wrap_at, $cut_long_wrds = false) {
 function get_wrapped_text($str) {
 	$wrap_at = 24;
 	$str_len = strlen($str);
+	if ($str_len > 80) $wrap_at = 40;
 	if ($str_len > 96) $wrap_at = 48;
 	if ($str_len > 112) $wrap_at = 56;
 	$text = $str;
@@ -157,6 +158,7 @@ $scale_y = $max_height / $title_height;
 $title_size = $size * min($scale_x, $scale_y, $scale_max);
 echo $title_text."\n";
 echo "title font size :: $title_size\n\n";
+echo "title_dim: $title_width x $title_height\n";
 
 // create entry title
 $color = create_color($pal['color1'], $img);
@@ -181,7 +183,7 @@ $max_width -= $noob_left_padding;
 // art is at y=522
 // title at y=108
 // 522-108=414
-$max_height = 420 - $title_y - 42 - $title_height - 27;
+$max_height = 420 - $title_y - $title_height - (27*2);
 echo "nooob     max_width: $max_width     noob_width: $noob_width     max_height :$max_height     noob_height: $noob_height\n";
 $scale_x = $max_width / $noob_width;
 $scale_y = $max_height / $noob_height;
