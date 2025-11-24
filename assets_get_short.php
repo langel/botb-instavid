@@ -66,7 +66,7 @@ foreach ($data['authors'] as $author) {
 		$x += ($i % 3) * $spacing;
 		$y += floor($i / 3) * ($spacing * 0.9);
 	}
-	$position .= " [ava0".$i."];\n[ava0".$i."][avatar".$id."] overlay=1:x='540-(overlay_w)*0.5':y=108";
+	$position .= " [ava0".$i."];\n[ava0".$i."][avatar".$id."] overlay=1:x='540-(overlay_w)*0.5':y=100";
 	$i++;
 }
 
@@ -107,9 +107,9 @@ nullsrc=size=1080x1920 [base];
 [5:v] setpts=PTS-STARTPTS [battle_time];
 '.$setpts."[base][bg] overlay=y=-'((t+0.001)/".$mp3_length.")*(h-H)' [tmp1];
 [tmp1][battle] overlay=1:x=522:y=1172 [tmp2];
-[tmp2][format] overlay=1:x='540-(overlay_w)*0.5':y=1020 [tmp3];
+[tmp2][format] overlay=1:x='540-(overlay_w)*0.5':y=1028 [tmp3];
 [tmp3][botblogo] overlay=1:x=46:y=1700 [tmp4];
-[tmp4][title] overlay=1:x='540-(overlay_w)*0.5':y=666 [tmp5];
+[tmp4][title] overlay=1:x='540-(overlay_w)*0.5':y=640 [tmp5];
 [tmp5][battle_time] overlay=1:x='270-(overlay_w)*0.5':y=1300".$position.'
 " -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
 

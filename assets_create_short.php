@@ -97,8 +97,8 @@ imagedestroy($img);
 echo "\nCREATING BotB LOGO :: \n";
 $text = 'battleofthebits.com';
 $font = './arial-black.ttf';
-$size = 99;
-$spacing = -15;
+$size = 88;
+$spacing = -11;
 function create_color($hex, $img) {
 	$r = hexdec(substr($hex,0,2));
 	$g = hexdec(substr($hex,2,2));
@@ -135,7 +135,7 @@ for ($k = 0; $k < 5; $k++) {
 echo "\nCREATING TITLE TEXT :: \n";
 $font = './Racing_Sans_One/RacingSansOne-Regular.ttf';
 $size = 72;
-$scale_max = 2.5;
+$scale_max = 2.0;
 
 
 // create title/n00b image object

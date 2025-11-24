@@ -12,4 +12,4 @@ echo -e "rendering video\n"
 bash assets/ffmpeg_call
 
 echo -e "cleaning up mess\n"
-rm -rf assets
+#rm -rf assets
