@@ -1,4 +1,4 @@
-Dependencies you'll need from whatever package manager you are stuck with: ffmpeg, imagemagick, php 
+Dependencies you'll need from whatever package manager you are stuck with: ffmpeg, imagemagick, php, php-gd 
 
 # sloppy notes that will become greatness
 
