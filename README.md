@@ -2,7 +2,9 @@ Dependencies you'll need from whatever package manager you are stuck with:
 ffmpeg, imagemagick, php, php-gd 
 
 Primary usage:
-`./instavid.sh {entry_id}`
-`./short_instavid {entry_id}` (for making tall shorts)
+`./instavid.sh {entry_id}` (detects automagically if entry is less than 60 seconds and renders a short video)
 
-This project currently requires guests to have access to the media player in order to donload mp3's. This used to be public to all, but aggressive scraper bots have forced BotB to close this door most of the time. Reach out to an admin to open this up for a short period if you really want to mess with this repo.
+This project currently requires you to have a BotB account and to add the account data from your cookie into a config.ini.
+There is an example .ini file attached in the repo. Simply copy and rename it to ``config.ini``.
+Then add ``windows`` if you're using Windows, or anything else if you're not using windows.
+Also add the cookie ``user_id``, ``botbr_id`` and ``serial`` from your BotB cookie (after you are logged in).

@@ -1,0 +1,8 @@
+[global]
+system = windows  ; windows or unix
+
+[cookie]
+user_id =
+serial =
+botbr_id =
+
