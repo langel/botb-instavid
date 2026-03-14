@@ -27,7 +27,7 @@ print "resizing from $dimensions to 450x450\n";
 system($convert.' -size '.$dimensions.' '.'assets/battle_art_temp -filter box -resize 450x450 '.'assets/battle-art450');
 // check if its animated
 $battle_art_cli = '';
-$battle_art_frames = exec("identify '.'assets/battle-art450 | sed -n 'p;$=' | tail -1");
+$battle_art_frames = exec("identify assets/battle-art450 | sed -n 'p;$=' | tail -1");
 if ((int)$battle_art_frames > 1) {
 	print "BATTLE ART :: $battle_art_frames animated GIF frames detected\n";
 	$battle_art_cli .= '-ignore_loop 0 ';

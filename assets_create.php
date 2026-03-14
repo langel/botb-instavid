@@ -33,14 +33,14 @@ if ($mp3_length < 60) {
 
 if ($is_short) {
     $imgWidth = 1080;
-    $imgHeight = $imgHeight = 1920 + floor($mp3_length * 20);
+    $imgHeight = 1920 + floor($mp3_length * 20);
 } else {
     $imgWidth = 1920;
     $imgHeight = 1080 + floor($mp3_length * 20);
 }
 
 $img = imagecreatetruecolor($imgWidth, $imgHeight);
-image_gradientrect($img, 0, 0, $imgWidth,floor($imgHeight * 0.5), $pal['color5'], $pal['color4']);
+image_gradientrect($img, 0, 0, $imgWidth, floor($imgHeight * 0.5), $pal['color5'], $pal['color4']);
 image_gradientrect($img, 0, ceil($imgHeight * 0.5), $imgWidth, $imgHeight, $pal['color4'], $pal['color3']);
 $water_pattern = imagecreatefrompng('assets/botb_bg.png');
 imagesettile($img, $water_pattern);
