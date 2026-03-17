@@ -157,6 +157,10 @@ if ($is_short) {
     $tmp5 = "[battle_time] overlay=1:x='".$battle_offset."-(overlay_w+100)*0.5':y=666".$position;
 }
 
+$target_lufs = -16;
+$target_lra = 11;
+$target_tp = -1.5;
+
 $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
 '.$vid_dimensions.'
 [0:v] setpts=PTS-STARTPTS [bg];
@@ -171,7 +175,7 @@ $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/bat
 [tmp3]".$tmp3." [tmp4];
 [tmp4]".$tmp4." [tmp5];
 [tmp5]".$tmp5.'
-" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
+" -af "loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.'" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
 
 print $ffmpeg_call;
 
