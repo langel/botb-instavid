@@ -17,6 +17,14 @@ if ($system == 'windows') {
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 print_r($data);
 
+$orientation = 'auto';
+if (isset($argv[1])) {
+    $arg = strtolower(trim($argv[1]));
+    if (in_array($arg, ['auto', 'wide', 'vertical'], true)) {
+        $orientation = $arg;
+    }
+}
+
 
 print "\nHANDLING BATTLE COVER ART ::\n";
 system('wget --header='.$cookie.' --no-check-certificate "'.$data['battle']['cover_art_url'].'" -O '.'assets/battle_art');
@@ -46,9 +54,16 @@ $mp3_length = trim(shell_exec("ffprobe -v quiet -show_entries format=duration -o
 echo "media length :: $mp3_length seconds\n";
 
 $is_short = False;
-if ($mp3_length < 60) {
+if ($mp3_length < 90) {
     $is_short = True;
 }
+if ($orientation === 'wide') {
+    $is_short = False;
+}
+if ($orientation === 'vertical') {
+    $is_short = True;
+}
+echo "video orientation mode :: $orientation (" . ($is_short ? "vertical" : "wide") . ")\n";
 
 
 print "\nHANDLING AVATARS ::\n";
@@ -157,7 +172,7 @@ if ($is_short) {
     $tmp5 = "[battle_time] overlay=1:x='".$battle_offset."-(overlay_w+100)*0.5':y=666".$position;
 }
 
-$target_lufs = -16;
+$target_lufs = -14;
 $target_lra = 11;
 $target_tp = -1.5;
 

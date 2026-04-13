@@ -15,6 +15,14 @@ $cookie = '"Cookie: user_id='.$user_id.'; serial='.$serial.'; botbr_id='.$botbr_
 
 $data = json_decode(file_get_contents('assets/data.json'), TRUE);
 
+$orientation = 'auto';
+if (isset($argv[1])) {
+    $arg = strtolower(trim($argv[1]));
+    if (in_array($arg, ['auto', 'wide', 'vertical'], true)) {
+        $orientation = $arg;
+    }
+}
+
 system('curl -k https://battleofthebits.com/api/v1/palette/load/'.$data['botbr']['palette_id'].' > assets/pal.json');
 $pal = json_decode(file_get_contents('assets/pal.json'), TRUE);
 print_r($pal);
@@ -27,7 +35,13 @@ $mp3_length = trim(shell_exec("ffprobe -v quiet -show_entries format=duration -o
 echo "media length :: $mp3_length seconds\n";
 
 $is_short = False;
-if ($mp3_length < 60) {
+if ($mp3_length < 90) {
+    $is_short = True;
+}
+if ($orientation === 'wide') {
+    $is_short = False;
+}
+if ($orientation === 'vertical') {
     $is_short = True;
 }
 
