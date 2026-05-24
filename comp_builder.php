@@ -52,6 +52,7 @@ if ($user_id === '' || $serial === '' || $botbr_id === '') {
 
 $cookie_header = "Cookie: user_id={$user_id}; serial={$serial}; botbr_id={$botbr_id}";
 $api_base = 'https://battleofthebits.com/api/v1';
+$build_started_at = microtime(true);
 
 try {
     $battle = fetch_json("{$api_base}/battle/load/{$battle_id}", $cookie_header);
@@ -59,6 +60,7 @@ try {
     if ($battle_title === '') {
         throw new RuntimeException("Battle title is missing for battle_id {$battle_id}");
     }
+    $release_date = format_battle_release_date_mmddyyyy($battle);
 
     $safe_battle_dir = sanitize_file_component($battle_title);
     if ($safe_battle_dir === '') {
@@ -190,18 +192,36 @@ try {
         $track_filenames,
         $projected_total_seconds,
         $spacing_status,
-        $spacing_warning_lines
+        $spacing_warning_lines,
+        $release_date,
+        null
     );
     file_put_contents($output['root'] . DIRECTORY_SEPARATOR . 'playlist_report.txt', $playlist_report);
     echo $playlist_report;
 
     if ($preview_only) {
+        $preview_elapsed_seconds = (int)round(max(0, microtime(true) - $build_started_at));
+        $playlist_report = build_preflight_log(
+            $filtered,
+            $buckets,
+            $top_percent_count,
+            $top_percent_base_count,
+            $top_percent_bonus_count,
+            $selected,
+            $ordered,
+            $track_filenames,
+            $projected_total_seconds,
+            $spacing_status,
+            $spacing_warning_lines,
+            $release_date,
+            $preview_elapsed_seconds
+        );
+        file_put_contents($output['root'] . DIRECTORY_SEPARATOR . 'playlist_report.txt', $playlist_report);
         echo "\nPREVIEW MODE: skipping media build steps.\n";
         exit(0);
     }
 
     $manifest_entries = [];
-    $track_lines = [];
     $concat_lines = [];
 
     foreach ($track_plan as $planned_track) {
@@ -249,7 +269,6 @@ try {
         $normalized_video_abs = resolve_absolute_path($normalized_video);
         $concat_lines[] = "file '" . escape_concat_path($normalized_video_abs) . "'";
         $track_title_display = $planned_track['title_display'];
-        $track_lines[] = "{$track_padded}. {$author_names} - {$track_title_display} (entry {$entry_id}, score {$score}, period {$period_id})";
         $manifest_entries[] = [
             'track' => $track_no,
             'entry_id' => $entry_id,
@@ -272,8 +291,7 @@ try {
     $running_seconds = 0;
     foreach ($manifest_entries as $manifest_entry) {
         $timestamp = format_seconds_compact_mmss_or_hhmmss($running_seconds);
-        $line_track = str_pad((string)$manifest_entry['track'], $pad_width, '0', STR_PAD_LEFT);
-        $youtube_description_lines[] = "{$timestamp} {$line_track}. {$manifest_entry['botbr']} - {$manifest_entry['title_display']}";
+        $youtube_description_lines[] = "{$timestamp} {$manifest_entry['botbr']} - {$manifest_entry['title_display']}";
         $running_seconds += (int)($manifest_entry['length_seconds'] ?? 0);
     }
     file_put_contents(
@@ -322,17 +340,14 @@ try {
     );
 
     $thumbnail_out = $output['youtube'] . DIRECTORY_SEPARATOR . 'thumbnail.png';
-    $normalized_videos = glob($output['youtube_normalized'] . DIRECTORY_SEPARATOR . '*.mp4') ?: [];
-    sort($normalized_videos);
-    if (count($normalized_videos) === 0) {
-        throw new RuntimeException("No normalized videos found for thumbnail background generation.");
-    }
     $thumbnail_bg = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_bg.png';
     $thumbnail_cover = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_cover.png';
+    $botb_pattern = $output['temp'] . DIRECTORY_SEPARATOR . 'botb_bg.png';
     run(
-        "ffmpeg -y -i " . esc($normalized_videos[0]) . " -frames:v 1 " . esc($thumbnail_bg),
-        "extract thumbnail background frame"
+        "curl -ksSL --header " . esc($cookie_header) . " " . esc('https://battleofthebits.com/disk/debris/botb_bg.png') . " -o " . esc($botb_pattern),
+        "download BotB background tile pattern"
     );
+    create_tiled_image_background($botb_pattern, $thumbnail_bg, 1920, 1080);
     run(
         "{$convert_cmd} " . esc($cover_src) . " -resize x1080 " . esc($thumbnail_cover),
         "resize cover art for thumbnail foreground"
@@ -362,10 +377,28 @@ try {
         ) . PHP_EOL
     );
 
-    file_put_contents($output['root'] . DIRECTORY_SEPARATOR . 'tracklist.txt', implode(PHP_EOL, $track_lines) . PHP_EOL);
     file_put_contents(
         $output['root'] . DIRECTORY_SEPARATOR . 'copy_links.html',
-        build_copy_links_html($battle_title, $manifest_entries, build_format_legend_lines($ordered))
+        build_copy_links_html($battle_title, $release_date, $manifest_entries, build_format_legend_lines($ordered))
+    );
+    $total_elapsed_seconds = (int)round(max(0, microtime(true) - $build_started_at));
+    file_put_contents(
+        $output['root'] . DIRECTORY_SEPARATOR . 'playlist_report.txt',
+        build_preflight_log(
+            $filtered,
+            $buckets,
+            $top_percent_count,
+            $top_percent_base_count,
+            $top_percent_bonus_count,
+            $selected,
+            $ordered,
+            $track_filenames,
+            $projected_total_seconds,
+            $spacing_status,
+            $spacing_warning_lines,
+            $release_date,
+            $total_elapsed_seconds
+        )
     );
 
     echo "\nCOMP BUILDER COMPLETE\n";
@@ -1070,10 +1103,15 @@ function build_preflight_log(
     array $track_filenames,
     int $projected_total_seconds,
     string $spacing_status,
-    array $spacing_warning_lines
+    array $spacing_warning_lines,
+    string $release_date = '',
+    ?int $total_processing_seconds = null
 ): string
 {
     $log_lines = [];
+    if ($release_date !== '') {
+        $log_lines[] = "Release date: {$release_date}";
+    }
     $log_lines[] = "Filtered entries (audio + non-bit): " . count($filtered);
     $log_lines[] = "Unique (format_token, period_id) buckets: " . count($buckets);
     $log_lines[] = "Top 25% base count (ceil): {$top_percent_base_count}";
@@ -1088,6 +1126,9 @@ function build_preflight_log(
         foreach ($spacing_warning_lines as $line) {
             $log_lines[] = $line;
         }
+    }
+    if ($total_processing_seconds !== null) {
+        $log_lines[] = "Total processing time: " . format_seconds_hhmmss($total_processing_seconds);
     }
     $log_lines[] = "";
     $log_lines[] = "Track list:";
@@ -1120,6 +1161,34 @@ function format_seconds_compact_mmss_or_hhmmss(int $total_seconds): string
         return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
     }
     return sprintf('%02d:%02d', $minutes, $seconds);
+}
+
+function format_battle_release_date_mmddyyyy(array $battle): string
+{
+    $raw = '';
+    $candidates = [
+        'datetime_end',
+        'end_datetime',
+        'date_end',
+        'end_date',
+        'ends_at',
+        'end',
+    ];
+    foreach ($candidates as $key) {
+        $value = trim((string)get_value($battle, [$key], ''));
+        if ($value !== '') {
+            $raw = $value;
+            break;
+        }
+    }
+    if ($raw === '') {
+        return '';
+    }
+    $ts = strtotime($raw);
+    if ($ts === false) {
+        return '';
+    }
+    return date('m/d/Y', $ts);
 }
 
 function build_track_title_display(string $title, string $format_token, bool $include_format): string
@@ -1155,7 +1224,7 @@ function html_escape(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function build_copy_links_html(string $battle_title, array $manifest_entries, array $format_legend_lines): string
+function build_copy_links_html(string $battle_title, string $release_date, array $manifest_entries, array $format_legend_lines): string
 {
     $lines = [];
     $lines[] = '<!doctype html>';
@@ -1182,18 +1251,19 @@ function build_copy_links_html(string $battle_title, array $manifest_entries, ar
     $lines[] = '  <ul>';
     $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($battle_title) . '">' . html_escape($battle_title) . '</a></li>';
     $lines[] = '  </ul>';
-    $lines[] = '  <h2>Track Titles</h2>';
+    if ($release_date !== '') {
+        $lines[] = '  <h2>Release Date</h2>';
+        $lines[] = '  <ul>';
+        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($release_date) . '">' . html_escape($release_date) . '</a></li>';
+        $lines[] = '  </ul>';
+    }
+    $lines[] = '  <h2>Tracks</h2>';
     $lines[] = '  <ul>';
     foreach ($manifest_entries as $entry) {
         $title = (string)($entry['title_display'] ?? '');
-        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($title) . '">' . html_escape($title) . '</a></li>';
-    }
-    $lines[] = '  </ul>';
-    $lines[] = '  <h2>Track Authors</h2>';
-    $lines[] = '  <ul>';
-    foreach ($manifest_entries as $entry) {
         $author = (string)($entry['botbr'] ?? '');
-        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($author) . '">' . html_escape($author) . '</a></li>';
+        $entry_id = (int)($entry['entry_id'] ?? 0);
+        $lines[] = '    <li><span>' . html_escape((string)$entry_id) . '</span> <a class="copy-link" href="#" data-copy="' . html_escape($title) . '">' . html_escape($title) . '</a> - <a class="copy-link" href="#" data-copy="' . html_escape($author) . '">' . html_escape($author) . '</a></li>';
     }
     $lines[] = '  </ul>';
     $lines[] = '  <h2>Format Legend</h2>';
@@ -1422,6 +1492,37 @@ function get_image_dimensions(string $path): array
         throw new RuntimeException("Unable to detect image dimensions: {$path}");
     }
     return [(int)$dims[0], (int)$dims[1]];
+}
+
+function create_tiled_image_background(string $pattern_path, string $output_path, int $target_w, int $target_h): void
+{
+    $pattern = @imagecreatefrompng($pattern_path);
+    if ($pattern === false) {
+        throw new RuntimeException("Failed to load tile pattern image: {$pattern_path}");
+    }
+    $tile_w = imagesx($pattern);
+    $tile_h = imagesy($pattern);
+    if ($tile_w <= 0 || $tile_h <= 0) {
+        imagedestroy($pattern);
+        throw new RuntimeException("Invalid tile pattern dimensions: {$pattern_path}");
+    }
+    $canvas = imagecreatetruecolor($target_w, $target_h);
+    if ($canvas === false) {
+        imagedestroy($pattern);
+        throw new RuntimeException("Failed to create thumbnail background canvas.");
+    }
+    for ($y = 0; $y < $target_h; $y += $tile_h) {
+        for ($x = 0; $x < $target_w; $x += $tile_w) {
+            imagecopy($canvas, $pattern, $x, $y, 0, 0, $tile_w, $tile_h);
+        }
+    }
+    if (!imagepng($canvas, $output_path)) {
+        imagedestroy($canvas);
+        imagedestroy($pattern);
+        throw new RuntimeException("Failed to write tiled thumbnail background: {$output_path}");
+    }
+    imagedestroy($canvas);
+    imagedestroy($pattern);
 }
 
 function rename_or_fail(string $from, string $to, string $context): void
