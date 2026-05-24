@@ -153,24 +153,29 @@ try {
     $track_filenames = [];
     $projected_total_seconds = 0;
     $track_plan = [];
+    $include_format_in_track_titles = !$single_format_token_across_selection;
     foreach ($ordered as $index => $entry) {
         $track_no = $index + 1;
         $track_padded = str_pad((string)$track_no, $pad_width, '0', STR_PAD_LEFT);
-        $format_token = sanitize_file_component((string)get_value($entry, ['format_token', 'format.token'], 'unknown'));
-        $title = sanitize_file_component((string)get_value($entry, ['title'], 'untitled'));
-        $author_names = sanitize_file_component(get_author_names_display($entry));
-        $format_segment = $single_format_token_across_selection ? '-' : "[{$format_token}]";
-        $base_name = "{$track_padded} {$author_names} {$format_segment} {$title}";
+        $format_token_raw = (string)get_value($entry, ['format_token', 'format.token'], 'unknown');
+        $format_token_file = sanitize_file_component($format_token_raw);
+        $title_raw = (string)get_value($entry, ['title'], 'untitled');
+        $title_file = sanitize_file_component($title_raw);
+        $author_names_raw = get_author_names_display($entry);
+        $author_names_file = sanitize_file_component($author_names_raw);
+        $format_segment = $single_format_token_across_selection ? '-' : "[{$format_token_file}]";
+        $base_name = "{$track_padded} {$author_names_file} {$format_segment} {$title_file}";
         $track_filenames[] = $base_name . '.wav';
         $projected_total_seconds += (int)round((float)get_value($entry, ['length'], 0));
         $track_plan[] = [
             'entry' => $entry,
             'track_no' => $track_no,
             'track_padded' => $track_padded,
-            'format_token' => $format_token,
-            'title' => $title,
-            'author_names' => $author_names,
+            'format_token' => $format_token_raw,
+            'title' => $title_raw,
+            'author_names' => $author_names_raw,
             'base_name' => $base_name,
+            'title_display' => build_track_title_display($title_raw, $format_token_raw, $include_format_in_track_titles),
         ];
     }
 
@@ -243,7 +248,8 @@ try {
 
         $normalized_video_abs = resolve_absolute_path($normalized_video);
         $concat_lines[] = "file '" . escape_concat_path($normalized_video_abs) . "'";
-        $track_lines[] = "{$track_padded}. {$author_names} - {$title} [{$format_token}] (entry {$entry_id}, score {$score}, period {$period_id})";
+        $track_title_display = $planned_track['title_display'];
+        $track_lines[] = "{$track_padded}. {$author_names} - {$track_title_display} (entry {$entry_id}, score {$score}, period {$period_id})";
         $manifest_entries[] = [
             'track' => $track_no,
             'entry_id' => $entry_id,
@@ -252,10 +258,28 @@ try {
             'format_token' => $format_token,
             'botbr' => $author_names,
             'title' => $title,
+            'title_display' => $track_title_display,
+            'length_seconds' => (int)round((float)get_value($entry, ['length'], 0)),
             'wav' => normalize_path($wav_out),
             'video' => normalize_path($track_video),
         ];
     }
+
+    $battle_profile_url = "https://battleofthebits.org/arena/Battle/{$battle_id}";
+    $youtube_description_lines = [];
+    $youtube_description_lines[] = $battle_profile_url;
+    $youtube_description_lines[] = '';
+    $running_seconds = 0;
+    foreach ($manifest_entries as $manifest_entry) {
+        $timestamp = format_seconds_compact_mmss_or_hhmmss($running_seconds);
+        $line_track = str_pad((string)$manifest_entry['track'], $pad_width, '0', STR_PAD_LEFT);
+        $youtube_description_lines[] = "{$timestamp} {$line_track}. {$manifest_entry['botbr']} - {$manifest_entry['title_display']}";
+        $running_seconds += (int)($manifest_entry['length_seconds'] ?? 0);
+    }
+    file_put_contents(
+        $output['youtube'] . DIRECTORY_SEPARATOR . 'description.txt',
+        implode(PHP_EOL, $youtube_description_lines) . PHP_EOL
+    );
 
     $cover_ext = detect_extension_from_url((string)($battle['cover_art_url'] ?? 'png'));
     $cover_src = $output['temp'] . DIRECTORY_SEPARATOR . "cover_source.{$cover_ext}";
@@ -297,6 +321,27 @@ try {
         "concatenate compilation video"
     );
 
+    $thumbnail_out = $output['youtube'] . DIRECTORY_SEPARATOR . 'thumbnail.png';
+    $normalized_videos = glob($output['youtube_normalized'] . DIRECTORY_SEPARATOR . '*.mp4') ?: [];
+    sort($normalized_videos);
+    if (count($normalized_videos) === 0) {
+        throw new RuntimeException("No normalized videos found for thumbnail background generation.");
+    }
+    $thumbnail_bg = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_bg.png';
+    $thumbnail_cover = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_cover.png';
+    run(
+        "ffmpeg -y -i " . esc($normalized_videos[0]) . " -frames:v 1 " . esc($thumbnail_bg),
+        "extract thumbnail background frame"
+    );
+    run(
+        "{$convert_cmd} " . esc($cover_src) . " -resize x1080 " . esc($thumbnail_cover),
+        "resize cover art for thumbnail foreground"
+    );
+    run(
+        "{$convert_cmd} " . esc($thumbnail_bg) . " " . esc($thumbnail_cover) . " -gravity center -composite " . esc($thumbnail_out),
+        "compose youtube thumbnail image"
+    );
+
     foreach (glob($output['youtube_tracks'] . DIRECTORY_SEPARATOR . '*.mp4') ?: [] as $file) {
         @unlink($file);
     }
@@ -318,6 +363,10 @@ try {
     );
 
     file_put_contents($output['root'] . DIRECTORY_SEPARATOR . 'tracklist.txt', implode(PHP_EOL, $track_lines) . PHP_EOL);
+    file_put_contents(
+        $output['root'] . DIRECTORY_SEPARATOR . 'copy_links.html',
+        build_copy_links_html($battle_title, $manifest_entries, build_format_legend_lines($ordered))
+    );
 
     echo "\nCOMP BUILDER COMPLETE\n";
     echo "Output directory: {$output['root']}\n";
@@ -1057,6 +1106,145 @@ function format_seconds_hhmmss(int $total_seconds): string
     $minutes = intdiv($total_seconds % 3600, 60);
     $seconds = $total_seconds % 60;
     return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+}
+
+function format_seconds_compact_mmss_or_hhmmss(int $total_seconds): string
+{
+    if ($total_seconds < 0) {
+        $total_seconds = 0;
+    }
+    $hours = intdiv($total_seconds, 3600);
+    $minutes = intdiv($total_seconds % 3600, 60);
+    $seconds = $total_seconds % 60;
+    if ($hours > 0) {
+        return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+    }
+    return sprintf('%02d:%02d', $minutes, $seconds);
+}
+
+function build_track_title_display(string $title, string $format_token, bool $include_format): string
+{
+    if (!$include_format) {
+        return $title;
+    }
+    return "{$title} [{$format_token}]";
+}
+
+function build_format_legend_lines(array $ordered_entries): array
+{
+    $legend = [];
+    foreach ($ordered_entries as $entry) {
+        $token = (string)get_value($entry, ['format_token', 'format.token'], 'unknown');
+        if ($token === '') {
+            $token = 'unknown';
+        }
+        if (isset($legend[$token])) {
+            continue;
+        }
+        $title = trim((string)get_value($entry, ['format.title', 'format.name', 'format_title', 'format_name'], ''));
+        if ($title === '') {
+            $title = $token;
+        }
+        $legend[$token] = "{$token} -> {$title}";
+    }
+    return array_values($legend);
+}
+
+function html_escape(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function build_copy_links_html(string $battle_title, array $manifest_entries, array $format_legend_lines): string
+{
+    $lines = [];
+    $lines[] = '<!doctype html>';
+    $lines[] = '<html lang="en">';
+    $lines[] = '<head>';
+    $lines[] = '  <meta charset="utf-8">';
+    $lines[] = '  <meta name="viewport" content="width=device-width, initial-scale=1">';
+    $lines[] = '  <title>Compilation Copy Helper</title>';
+    $lines[] = '  <style>';
+    $lines[] = '    body { font-family: Arial, sans-serif; margin: 24px; line-height: 1.5; }';
+    $lines[] = '    h1, h2 { margin: 0 0 12px; }';
+    $lines[] = '    h2 { margin-top: 24px; }';
+    $lines[] = '    ul { margin: 0; padding-left: 20px; }';
+    $lines[] = '    li { margin: 4px 0; }';
+    $lines[] = '    a { text-decoration: none; }';
+    $lines[] = '    a:hover { text-decoration: underline; }';
+    $lines[] = '    #copy-status { margin: 0 0 16px; color: #1f6f3f; min-height: 1.2em; }';
+    $lines[] = '  </style>';
+    $lines[] = '</head>';
+    $lines[] = '<body>';
+    $lines[] = '  <h1>Copy Helper</h1>';
+    $lines[] = '  <div id="copy-status" aria-live="polite"></div>';
+    $lines[] = '  <h2>Battle Title</h2>';
+    $lines[] = '  <ul>';
+    $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($battle_title) . '">' . html_escape($battle_title) . '</a></li>';
+    $lines[] = '  </ul>';
+    $lines[] = '  <h2>Track Titles</h2>';
+    $lines[] = '  <ul>';
+    foreach ($manifest_entries as $entry) {
+        $title = (string)($entry['title_display'] ?? '');
+        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($title) . '">' . html_escape($title) . '</a></li>';
+    }
+    $lines[] = '  </ul>';
+    $lines[] = '  <h2>Track Authors</h2>';
+    $lines[] = '  <ul>';
+    foreach ($manifest_entries as $entry) {
+        $author = (string)($entry['botbr'] ?? '');
+        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($author) . '">' . html_escape($author) . '</a></li>';
+    }
+    $lines[] = '  </ul>';
+    $lines[] = '  <h2>Format Legend</h2>';
+    $lines[] = '  <ul>';
+    foreach ($format_legend_lines as $legend_line) {
+        $legend_text = (string)$legend_line;
+        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($legend_text) . '">' . html_escape($legend_text) . '</a></li>';
+    }
+    $lines[] = '  </ul>';
+    $lines[] = '  <script>';
+    $lines[] = '    var statusNode = document.getElementById("copy-status");';
+    $lines[] = '    function showCopied(text) {';
+    $lines[] = '      if (!statusNode) { return; }';
+    $lines[] = '      statusNode.textContent = "Copied: " + text;';
+    $lines[] = '      window.clearTimeout(showCopied._timer || 0);';
+    $lines[] = '      showCopied._timer = window.setTimeout(function () {';
+    $lines[] = '        statusNode.textContent = "";';
+    $lines[] = '      }, 1500);';
+    $lines[] = '    }';
+    $lines[] = '    function fallbackCopy(text) {';
+    $lines[] = '      var ta = document.createElement("textarea");';
+    $lines[] = '      ta.value = text;';
+    $lines[] = '      ta.setAttribute("readonly", "readonly");';
+    $lines[] = '      ta.style.position = "fixed";';
+    $lines[] = '      ta.style.left = "-9999px";';
+    $lines[] = '      document.body.appendChild(ta);';
+    $lines[] = '      ta.select();';
+    $lines[] = '      try { document.execCommand("copy"); } catch (e) {}';
+    $lines[] = '      document.body.removeChild(ta);';
+    $lines[] = '    }';
+    $lines[] = '    document.querySelectorAll(".copy-link").forEach(function (node) {';
+    $lines[] = '      node.addEventListener("click", function (event) {';
+    $lines[] = '        event.preventDefault();';
+    $lines[] = '        var text = node.getAttribute("data-copy") || "";';
+    $lines[] = '        if (navigator.clipboard && navigator.clipboard.writeText) {';
+    $lines[] = '          navigator.clipboard.writeText(text).then(function () {';
+    $lines[] = '            showCopied(text);';
+    $lines[] = '          }).catch(function () {';
+    $lines[] = '            fallbackCopy(text);';
+    $lines[] = '            showCopied(text);';
+    $lines[] = '          });';
+    $lines[] = '        } else {';
+    $lines[] = '          fallbackCopy(text);';
+    $lines[] = '          showCopied(text);';
+    $lines[] = '        }';
+    $lines[] = '      });';
+    $lines[] = '    });';
+    $lines[] = '  </script>';
+    $lines[] = '</body>';
+    $lines[] = '</html>';
+    return implode(PHP_EOL, $lines) . PHP_EOL;
 }
 
 function prompt_continue_without_spacing(string $message, array $summary_lines): bool

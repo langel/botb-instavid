@@ -49,11 +49,20 @@ Compilation builder usage:
   - render entry videos via `instavid.sh` with forced `wide` orientation
   - normalize video audio to `48000` Hz stereo
   - compile all selected tracks into one compilation video
+  - generate `youtube/thumbnail.png` (`1920x1080`) using a frame from the first normalized video as background and vertically fit cover art centered horizontally
+  - generate `youtube/description.txt` with battle profile URL + timestamped track list in `(hh:)mm:ss`
   - delete per-entry intermediate videos after successful concat
+- generate root-level `copy_links.html` with copy-only links for:
+  - battle title
+  - track titles
+  - track authors
+  - format legend entries (`token -> format name/title`)
+- track titles in tracklists include `[format]` only when the final selection has multiple formats
 
 Output artifacts are written under the battle title directory, including:
 - `bandcamp/` (WAV tracks + cover art)
-- `youtube/` (final compilation)
+- `youtube/` (final compilation + thumbnail + description)
 - `selected_entries.json`
 - `tracklist.txt`
+- `copy_links.html`
 - `playlist_report.txt` (preflight selection summary + ordered track filenames)
