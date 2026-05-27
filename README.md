@@ -46,14 +46,14 @@ Compilation builder usage:
   - normalized WAV files at `-14 LUFS` (`loudnorm`) with sample rate normalized to `44100` Hz
   - WAV channel layout is preserved from source (mono stays mono, stereo stays stereo)
   - filename format token segment uses `[format_token]`, or `-` when all selected tracks share the same format token
-  - scaled battle cover art (integer multiples until dimensions are at least `1200x1200`)
+  - scaled battle cover art (integer multiples until dimensions are at least `1400x1400`)
 - generate YouTube files:
   - render entry videos via `instavid.sh` with forced `wide` orientation
   - normalize video audio to `48000` Hz stereo
-  - compile all selected tracks into one compilation video
-  - generate `youtube/thumbnail.png` (`1920x1080`) using the tiled BotB background pattern with vertically fit cover art centered horizontally
-  - generate `youtube/description.txt` with battle profile URL + timestamped track list in `(hh:)mm:ss` (no track numbers)
-  - delete per-entry intermediate videos after successful concat
+  - compile all selected tracks into one compilation video written at output root (`*_compilation.mp4`)
+  - generate root-level `yt_thumbnail.jpg` (`1920x1080`) using the tiled BotB background pattern with vertically fit cover art centered horizontally
+  - generate root-level `yt_description.txt` whose first line is `completed {Month} {day}, {year}`, followed by battle profile URL + timestamped track list in `(hh:)mm:ss` (no track numbers)
+  - delete YouTube intermediate directories after successful concat (`youtube/`, `temp/`)
 - generate root-level `copy_links.html` with copy-only links for:
   - battle title
   - release date
@@ -63,7 +63,9 @@ Compilation builder usage:
 
 Output artifacts are written under the battle title directory, including:
 - `bandcamp/` (WAV tracks + cover art)
-- `youtube/` (final compilation + thumbnail + description)
 - `selected_entries.json`
+- `*_compilation.mp4` (root)
+- `yt_thumbnail.jpg`
+- `yt_description.txt`
 - `copy_links.html`
 - `playlist_report.txt` (preflight selection summary + ordered track filenames)

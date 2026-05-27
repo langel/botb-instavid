@@ -56,6 +56,12 @@ $build_started_at = microtime(true);
 
 try {
     $battle = fetch_json("{$api_base}/battle/load/{$battle_id}", $cookie_header);
+    $format_title_map = [];
+    try {
+        $format_title_map = fetch_format_title_map($api_base, $cookie_header);
+    } catch (Throwable $ignored) {
+        $format_title_map = [];
+    }
     $battle_title = trim((string)($battle['title'] ?? ''));
     if ($battle_title === '') {
         throw new RuntimeException("Battle title is missing for battle_id {$battle_id}");
@@ -285,7 +291,12 @@ try {
     }
 
     $battle_profile_url = "https://battleofthebits.org/arena/Battle/{$battle_id}";
+    $release_date_long = format_battle_release_date_long($battle);
+    if ($release_date_long === '') {
+        $release_date_long = date('F j, Y');
+    }
     $youtube_description_lines = [];
+    $youtube_description_lines[] = "completed {$release_date_long}";
     $youtube_description_lines[] = $battle_profile_url;
     $youtube_description_lines[] = '';
     $running_seconds = 0;
@@ -295,7 +306,7 @@ try {
         $running_seconds += (int)($manifest_entry['length_seconds'] ?? 0);
     }
     file_put_contents(
-        $output['youtube'] . DIRECTORY_SEPARATOR . 'description.txt',
+        $output['root'] . DIRECTORY_SEPARATOR . 'yt_description.txt',
         implode(PHP_EOL, $youtube_description_lines) . PHP_EOL
     );
 
@@ -312,7 +323,7 @@ try {
 
     [$cover_w, $cover_h] = get_image_dimensions($cover_src);
     $scale = 1;
-    while (($cover_w * $scale) < 1200 || ($cover_h * $scale) < 1200) {
+    while (($cover_w * $scale) < 1400 || ($cover_h * $scale) < 1400) {
         $scale++;
     }
 
@@ -328,20 +339,31 @@ try {
         copy_or_fail($cover_src, $cover_out, "copy cover art without scaling");
     }
 
-    $concat_file = $output['youtube'] . DIRECTORY_SEPARATOR . 'concat_list.txt';
+    $concat_file = $output['temp'] . DIRECTORY_SEPARATOR . 'concat_list.txt';
     file_put_contents($concat_file, implode(PHP_EOL, $concat_lines) . PHP_EOL);
 
     $compilation_name = sanitize_file_component($battle_title) . '_compilation.mp4';
-    $compilation_out = $output['youtube'] . DIRECTORY_SEPARATOR . $compilation_name;
+    $compilation_out = $output['root'] . DIRECTORY_SEPARATOR . $compilation_name;
     run(
         "ffmpeg -y -f concat -safe 0 -i " . esc($concat_file) .
         " -c:v libx264 -crf 20 -preset medium -pix_fmt yuv420p -c:a aac -b:a 192k -ar 48000 -ac 2 " . esc($compilation_out),
         "concatenate compilation video"
     );
 
-    $thumbnail_out = $output['youtube'] . DIRECTORY_SEPARATOR . 'thumbnail.png';
+    $thumbnail_out = $output['root'] . DIRECTORY_SEPARATOR . 'yt_thumbnail.jpg';
     $thumbnail_bg = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_bg.png';
     $thumbnail_cover = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_cover.png';
+    $thumbnail_cover_source = $cover_src;
+    if (strtolower($cover_ext) === 'gif') {
+        $thumbnail_cover_source = $output['temp'] . DIRECTORY_SEPARATOR . 'cover_source_frame0.png';
+        run(
+            "{$convert_cmd} " . esc($cover_src . '[0]') . " " . esc($thumbnail_cover_source),
+            "extract first frame from gif cover art for thumbnail"
+        );
+        if (!file_exists($thumbnail_cover_source)) {
+            throw new RuntimeException("Failed to extract first frame from GIF cover art for thumbnail.");
+        }
+    }
     $botb_pattern = $output['temp'] . DIRECTORY_SEPARATOR . 'botb_bg.png';
     run(
         "curl -ksSL --header " . esc($cookie_header) . " " . esc('https://battleofthebits.com/disk/debris/botb_bg.png') . " -o " . esc($botb_pattern),
@@ -349,11 +371,11 @@ try {
     );
     create_tiled_image_background($botb_pattern, $thumbnail_bg, 1920, 1080);
     run(
-        "{$convert_cmd} " . esc($cover_src) . " -resize x1080 " . esc($thumbnail_cover),
+        "{$convert_cmd} " . esc($thumbnail_cover_source) . " -resize x1080 " . esc($thumbnail_cover),
         "resize cover art for thumbnail foreground"
     );
     run(
-        "{$convert_cmd} " . esc($thumbnail_bg) . " " . esc($thumbnail_cover) . " -gravity center -composite " . esc($thumbnail_out),
+        "{$convert_cmd} " . esc($thumbnail_bg) . " " . esc($thumbnail_cover) . " -gravity center -composite -quality 92 " . esc($thumbnail_out),
         "compose youtube thumbnail image"
     );
 
@@ -379,7 +401,7 @@ try {
 
     file_put_contents(
         $output['root'] . DIRECTORY_SEPARATOR . 'copy_links.html',
-        build_copy_links_html($battle_title, $release_date, $manifest_entries, build_format_legend_lines($ordered))
+        build_copy_links_html($battle_title, $release_date, $manifest_entries, build_format_legend_lines($ordered, $format_title_map))
     );
     $total_elapsed_seconds = (int)round(max(0, microtime(true) - $build_started_at));
     file_put_contents(
@@ -400,6 +422,8 @@ try {
             $total_elapsed_seconds
         )
     );
+    remove_directory_recursive($output['youtube']);
+    remove_directory_recursive($output['temp']);
 
     echo "\nCOMP BUILDER COMPLETE\n";
     echo "Output directory: {$output['root']}\n";
@@ -424,6 +448,27 @@ function fetch_json(string $url, string $cookie_header): array
         throw new RuntimeException("Invalid JSON from URL: {$url}");
     }
     return $decoded;
+}
+
+function fetch_format_title_map(string $api_base, string $cookie_header): array
+{
+    $raw = fetch_json("{$api_base}/format/list/0/500", $cookie_header);
+    $map = [];
+    foreach ($raw as $format) {
+        if (!is_array($format)) {
+            continue;
+        }
+        $token = trim((string)($format['token'] ?? ''));
+        if ($token === '') {
+            continue;
+        }
+        $title = trim((string)($format['title'] ?? ''));
+        if ($title === '') {
+            $title = $token;
+        }
+        $map[$token] = $title;
+    }
+    return $map;
 }
 
 function normalize_entry_list(array $raw): array
@@ -1165,7 +1210,24 @@ function format_seconds_compact_mmss_or_hhmmss(int $total_seconds): string
 
 function format_battle_release_date_mmddyyyy(array $battle): string
 {
-    $raw = '';
+    $ts = resolve_battle_release_timestamp($battle);
+    if ($ts === null) {
+        return '';
+    }
+    return date('m/d/Y', $ts);
+}
+
+function format_battle_release_date_long(array $battle): string
+{
+    $ts = resolve_battle_release_timestamp($battle);
+    if ($ts === null) {
+        return '';
+    }
+    return date('F j, Y', $ts);
+}
+
+function resolve_battle_release_timestamp(array $battle): ?int
+{
     $candidates = [
         'datetime_end',
         'end_datetime',
@@ -1176,19 +1238,15 @@ function format_battle_release_date_mmddyyyy(array $battle): string
     ];
     foreach ($candidates as $key) {
         $value = trim((string)get_value($battle, [$key], ''));
-        if ($value !== '') {
-            $raw = $value;
-            break;
+        if ($value === '') {
+            continue;
+        }
+        $ts = strtotime($value);
+        if ($ts !== false) {
+            return (int)$ts;
         }
     }
-    if ($raw === '') {
-        return '';
-    }
-    $ts = strtotime($raw);
-    if ($ts === false) {
-        return '';
-    }
-    return date('m/d/Y', $ts);
+    return null;
 }
 
 function build_track_title_display(string $title, string $format_token, bool $include_format): string
@@ -1199,7 +1257,7 @@ function build_track_title_display(string $title, string $format_token, bool $in
     return "{$title} [{$format_token}]";
 }
 
-function build_format_legend_lines(array $ordered_entries): array
+function build_format_legend_lines(array $ordered_entries, array $format_title_map = []): array
 {
     $legend = [];
     foreach ($ordered_entries as $entry) {
@@ -1211,11 +1269,15 @@ function build_format_legend_lines(array $ordered_entries): array
             continue;
         }
         $title = trim((string)get_value($entry, ['format.title', 'format.name', 'format_title', 'format_name'], ''));
+        if ($title === '' && isset($format_title_map[$token])) {
+            $title = trim((string)$format_title_map[$token]);
+        }
         if ($title === '') {
             $title = $token;
         }
         $legend[$token] = "{$token} -> {$title}";
     }
+    ksort($legend, SORT_NATURAL | SORT_FLAG_CASE);
     return array_values($legend);
 }
 
@@ -1241,6 +1303,7 @@ function build_copy_links_html(string $battle_title, string $release_date, array
     $lines[] = '    li { margin: 4px 0; }';
     $lines[] = '    a { text-decoration: none; }';
     $lines[] = '    a:hover { text-decoration: underline; }';
+    $lines[] = '    .legend-block { display: inline-block; white-space: pre-line; }';
     $lines[] = '    #copy-status { margin: 0 0 16px; color: #1f6f3f; min-height: 1.2em; }';
     $lines[] = '  </style>';
     $lines[] = '</head>';
@@ -1262,17 +1325,15 @@ function build_copy_links_html(string $battle_title, string $release_date, array
     foreach ($manifest_entries as $entry) {
         $title = (string)($entry['title_display'] ?? '');
         $author = (string)($entry['botbr'] ?? '');
-        $entry_id = (int)($entry['entry_id'] ?? 0);
-        $lines[] = '    <li><span>' . html_escape((string)$entry_id) . '</span> <a class="copy-link" href="#" data-copy="' . html_escape($title) . '">' . html_escape($title) . '</a> - <a class="copy-link" href="#" data-copy="' . html_escape($author) . '">' . html_escape($author) . '</a></li>';
+        $track_position = (int)($entry['track'] ?? 0);
+        $lines[] = '    <li><span>' . html_escape((string)$track_position) . '</span> <a class="copy-link" href="#" data-copy="' . html_escape($title) . '">' . html_escape($title) . '</a> - <a class="copy-link" href="#" data-copy="' . html_escape($author) . '">' . html_escape($author) . '</a></li>';
     }
     $lines[] = '  </ul>';
     $lines[] = '  <h2>Format Legend</h2>';
-    $lines[] = '  <ul>';
-    foreach ($format_legend_lines as $legend_line) {
-        $legend_text = (string)$legend_line;
-        $lines[] = '    <li><a class="copy-link" href="#" data-copy="' . html_escape($legend_text) . '">' . html_escape($legend_text) . '</a></li>';
-    }
-    $lines[] = '  </ul>';
+    $legend_text = implode("\n", array_map(static function ($line): string {
+        return (string)$line;
+    }, $format_legend_lines));
+    $lines[] = '  <a class="copy-link legend-block" href="#" data-copy="' . html_escape($legend_text) . '">' . html_escape($legend_text) . '</a>';
     $lines[] = '  <script>';
     $lines[] = '    var statusNode = document.getElementById("copy-status");';
     $lines[] = '    function showCopied(text) {';
