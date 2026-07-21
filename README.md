@@ -43,7 +43,7 @@ Compilation builder usage:
 - `--preview` / `-p` mode only writes/prints this preflight log and exits without building media assets
 - if the battle-title output directory already exists, prompt for overwrite before continuing
 - generate Bandcamp files:
-  - normalized WAV files at `-14 LUFS` (`loudnorm`) with sample rate normalized to `44100` Hz
+  - normalized WAV files at `-14 LUFS` (`loudnorm` two-pass with `linear=true`) with sample rate normalized to `44100` Hz
   - WAV channel layout is preserved from source (mono stays mono, stereo stays stereo)
   - filename format token segment uses `[format_token]`, or `-` when all selected tracks share the same format token
   - scaled battle cover art (integer multiples until dimensions are at least `1400x1400`)

@@ -175,6 +175,7 @@ if ($is_short) {
 $target_lufs = -14;
 $target_lra = 11;
 $target_tp = -1.5;
+$loudnorm_filter = build_loudnorm_linear_two_pass_filter('assets/mp3', $target_lufs, $target_lra, $target_tp, $system);
 
 $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
 '.$vid_dimensions.'
@@ -190,8 +191,37 @@ $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/bat
 [tmp3]".$tmp3." [tmp4];
 [tmp4]".$tmp4." [tmp5];
 [tmp5]".$tmp5.'
-" -af "loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.'" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
+" -af "'.$loudnorm_filter.'" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
 
 print $ffmpeg_call;
 
 file_put_contents('assets/ffmpeg_call', $ffmpeg_call);
+
+function build_loudnorm_linear_two_pass_filter(string $audio_path, float $target_lufs, float $target_lra, float $target_tp, string $system): string
+{
+    $pass1_filter = 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':print_format=json';
+    $null_sink = (strtolower($system) === 'windows') ? 'NUL' : '/dev/null';
+    $cmd = 'ffmpeg -hide_banner -nostats -i '.escapeshellarg($audio_path).' -af '.escapeshellarg($pass1_filter).' -f null '.escapeshellarg($null_sink).' 2>&1';
+    $out = shell_exec($cmd);
+    if (!is_string($out) || trim($out) === '') {
+        throw new RuntimeException('Two-pass loudnorm analysis produced no output.');
+    }
+    if (preg_match('/\{\s*"input_i"[\s\S]*?"target_offset"\s*:\s*"[^"]*"\s*\}/', $out, $m) !== 1) {
+        throw new RuntimeException('Unable to parse loudnorm stats block from ffmpeg output.');
+    }
+    $stats = json_decode($m[0], true);
+    if (!is_array($stats)) {
+        throw new RuntimeException('Failed decoding loudnorm stats JSON.');
+    }
+    foreach (['input_i', 'input_lra', 'input_tp', 'input_thresh', 'target_offset'] as $required) {
+        if (!isset($stats[$required]) || trim((string)$stats[$required]) === '') {
+            throw new RuntimeException('Missing loudnorm measured value: '.$required);
+        }
+    }
+    return 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':linear=true'
+        .':measured_I='.$stats['input_i']
+        .':measured_LRA='.$stats['input_lra']
+        .':measured_TP='.$stats['input_tp']
+        .':measured_thresh='.$stats['input_thresh']
+        .':offset='.$stats['target_offset'];
+}

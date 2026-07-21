@@ -250,10 +250,7 @@ try {
 
         $audio_url = "https://battleofthebits.com/player/EntryPlay/{$entry_id}";
         run("curl -ksSL --header " . esc($cookie_header) . " " . esc($audio_url) . " -o " . esc($mp3_temp), "download mp3 for entry {$entry_id}");
-        run(
-            "ffmpeg -y -i " . esc($mp3_temp) . " -af " . esc('loudnorm=I=-14:LRA=11:TP=-1.5') . " -ar 44100 -c:a pcm_s16le " . esc($wav_out),
-            "normalize to wav for entry {$entry_id}"
-        );
+        normalize_audio_loudnorm_two_pass($mp3_temp, $wav_out, -14.0, 11.0, -1.5, 44100, 'pcm_s16le');
 
         $track_video_root = "{$entry_id}.mp4";
         run("bash instavid.sh {$entry_id} wide", "render instavid for entry {$entry_id} (forced wide)");
@@ -1607,6 +1604,86 @@ function run(string $command, string $context): void
     if ($exit_code !== 0) {
         throw new RuntimeException("Command failed ({$context}): {$command}");
     }
+}
+
+function normalize_audio_loudnorm_two_pass(
+    string $input_path,
+    string $output_path,
+    float $target_i,
+    float $target_lra,
+    float $target_tp,
+    int $sample_rate,
+    string $audio_codec
+): void {
+    $pass1_filter = sprintf(
+        'loudnorm=I=%s:LRA=%s:TP=%s:print_format=json',
+        ffmpeg_number($target_i),
+        ffmpeg_number($target_lra),
+        ffmpeg_number($target_tp)
+    );
+    $analysis_cmd = "ffmpeg -hide_banner -nostats -i " . esc($input_path) .
+        " -af " . esc($pass1_filter) .
+        " -f null " . esc(ffmpeg_null_sink()) . " 2>&1";
+    $analysis_output = shell_exec($analysis_cmd);
+    if (!is_string($analysis_output) || trim($analysis_output) === '') {
+        throw new RuntimeException("Two-pass loudnorm analysis produced no output for {$input_path}");
+    }
+
+    $stats = parse_loudnorm_stats_from_output($analysis_output);
+    $pass2_filter = sprintf(
+        'loudnorm=I=%s:LRA=%s:TP=%s:linear=true:measured_I=%s:measured_LRA=%s:measured_TP=%s:measured_thresh=%s:offset=%s',
+        ffmpeg_number($target_i),
+        ffmpeg_number($target_lra),
+        ffmpeg_number($target_tp),
+        ffmpeg_stats_number($stats['input_i'] ?? null),
+        ffmpeg_stats_number($stats['input_lra'] ?? null),
+        ffmpeg_stats_number($stats['input_tp'] ?? null),
+        ffmpeg_stats_number($stats['input_thresh'] ?? null),
+        ffmpeg_stats_number($stats['target_offset'] ?? null)
+    );
+
+    run(
+        "ffmpeg -y -i " . esc($input_path) .
+        " -af " . esc($pass2_filter) .
+        " -ar {$sample_rate} -c:a " . esc($audio_codec) . " " . esc($output_path),
+        "normalize to wav (two-pass loudnorm linear) for " . basename($input_path)
+    );
+}
+
+function parse_loudnorm_stats_from_output(string $output): array
+{
+    if (preg_match('/\{\s*"input_i"[\s\S]*?"target_offset"\s*:\s*"[^"]*"\s*\}/', $output, $matches) !== 1) {
+        throw new RuntimeException("Unable to parse loudnorm stats block from ffmpeg output.");
+    }
+    $decoded = json_decode($matches[0], true);
+    if (!is_array($decoded)) {
+        throw new RuntimeException("Failed to decode loudnorm stats JSON from ffmpeg output.");
+    }
+    return $decoded;
+}
+
+function ffmpeg_number(float $value): string
+{
+    $text = sprintf('%.6f', $value);
+    $text = rtrim(rtrim($text, '0'), '.');
+    if ($text === '-0') {
+        return '0';
+    }
+    return $text;
+}
+
+function ffmpeg_stats_number($value): string
+{
+    $text = trim((string)$value);
+    if ($text === '') {
+        throw new RuntimeException("Missing loudnorm measured value for second pass.");
+    }
+    return $text;
+}
+
+function ffmpeg_null_sink(): string
+{
+    return strtoupper((string)PHP_OS_FAMILY) === 'WINDOWS' ? 'NUL' : '/dev/null';
 }
 
 function esc(string $arg): string
