@@ -27,12 +27,25 @@ if (isset($argv[1])) {
 
 
 print "\nHANDLING BATTLE COVER ART ::\n";
-system('wget --header='.$cookie.' --no-check-certificate "'.$data['battle']['cover_art_url'].'" -O '.'assets/battle_art');
-print "scanning image...";
-system($convert.' '.'assets/battle_art -coalesce '.'assets/battle_art_temp');
-$dimensions = system("identify -format '%wx%h' assets/battle_art_temp[0]");
-print "resizing from $dimensions to 450x450\n";
-system($convert.' -size '.$dimensions.' '.'assets/battle_art_temp -filter box -resize 450x450 '.'assets/battle-art450');
+$battle_art_source_url = (string)$data['battle']['cover_art_url'];
+$battle_art_meta_file = 'assets/battle_art.source';
+$battle_art_needs_refresh = true;
+if (file_exists('assets/battle-art450') && file_exists($battle_art_meta_file)) {
+    $battle_art_cached_source = trim((string)file_get_contents($battle_art_meta_file));
+    if ($battle_art_cached_source === $battle_art_source_url) {
+        $battle_art_needs_refresh = false;
+        print "using cached processed battle art (source unchanged)\n";
+    }
+}
+if ($battle_art_needs_refresh) {
+    system('wget --header='.$cookie.' --no-check-certificate "'.$battle_art_source_url.'" -O '.'assets/battle_art');
+    print "scanning image...";
+    system($convert.' '.'assets/battle_art -coalesce '.'assets/battle_art_temp');
+    $dimensions = system("identify -format '%wx%h' assets/battle_art_temp[0]");
+    print "resizing from $dimensions to 450x450\n";
+    system($convert.' -size '.$dimensions.' '.'assets/battle_art_temp -filter box -resize 450x450 '.'assets/battle-art450');
+    file_put_contents($battle_art_meta_file, $battle_art_source_url . PHP_EOL);
+}
 // check if its animated
 $battle_art_cli = '';
 $battle_art_frames = exec("identify assets/battle-art450 | sed -n 'p;$=' | tail -1");
@@ -44,14 +57,38 @@ else print "BATTLE ART :: still image \n";
 
 
 print "\nHANDLING FORMAT ICON ::\n";
-system('wget --header='.$cookie.' --no-check-certificate '.$data['format']['icon_url'].' -O '.'assets/format_icon');
-system($convert.' '.'assets/format_icon -filter box -resize 64x64 -coalesce '.'assets/format_icon.png');
+$format_icon_source_url = (string)$data['format']['icon_url'];
+$format_icon_meta_file = 'assets/format_icon.source';
+$format_icon_needs_refresh = true;
+if (file_exists('assets/format_icon.png') && file_exists($format_icon_meta_file)) {
+    $format_icon_cached_source = trim((string)file_get_contents($format_icon_meta_file));
+    if ($format_icon_cached_source === $format_icon_source_url) {
+        $format_icon_needs_refresh = false;
+        print "using cached format icon (source unchanged)\n";
+    }
+}
+if ($format_icon_needs_refresh) {
+    system('wget --header='.$cookie.' --no-check-certificate '.$format_icon_source_url.' -O '.'assets/format_icon');
+    system($convert.' '.'assets/format_icon -filter box -resize 64x64 -coalesce '.'assets/format_icon.png');
+    file_put_contents($format_icon_meta_file, $format_icon_source_url . PHP_EOL);
+}
 
 
 print "\nDONLOAD TEH MP3 ::\n";
 system('wget --header='.$cookie.' --no-check-certificate "https://battleofthebits.com/player/EntryPlay/'.$data['id'].'" -O assets/mp3');
 $mp3_length = trim(shell_exec("ffprobe -v quiet -show_entries format=duration -of csv=p=0 assets/mp3"));
 echo "media length :: $mp3_length seconds\n";
+
+$target_lufs = -14;
+$target_lra = 11;
+$target_tp = -1.5;
+$normalized_wav_path = 'assets/normalized.wav';
+if (!file_exists($normalized_wav_path) || filemtime($normalized_wav_path) < filemtime('assets/mp3')) {
+    normalize_audio_loudnorm_two_pass('assets/mp3', $normalized_wav_path, $target_lufs, $target_lra, $target_tp, $system);
+} else {
+    echo "reusing cached normalized wav\n";
+}
+$audio_input_path = $normalized_wav_path;
 
 $is_short = False;
 if ($mp3_length < 90) {
@@ -76,16 +113,27 @@ $i = 0;
 foreach ($data['authors'] as $author) {
 	$id = $author['id'];
 	$source_file = 'assets/avatar'.$id;
-	// get the image
 	$avatar_string = substr($author['avatar_from_time'], strpos($author['avatar_from_time'], '/', -1));
-	system('wget --header='.$cookie.' --no-check-certificate https://battleofthebits.com/'.$avatar_string.' -O '.$source_file);
-	// resize
 	$temp_file = "assets/avatarTEMP".$author['id'];
-	print "coalescing avatar to $temp_file\n";
-	system($convert.' '.$source_file.' -coalesce '.$temp_file);
 	$target_file = "assets/avatar".$author['id'];
-	print "resizing avatar to $target_file\n";
-	system($convert.' '.$temp_file.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' '.$target_file);
+    $avatar_source_url = 'https://battleofthebits.com/'.$avatar_string;
+    $avatar_meta_file = $target_file . '.source';
+    $avatar_needs_refresh = true;
+    if (file_exists($target_file) && file_exists($avatar_meta_file)) {
+        $avatar_cached_source = trim((string)file_get_contents($avatar_meta_file));
+        if ($avatar_cached_source === $avatar_source_url) {
+            $avatar_needs_refresh = false;
+            print "reusing cached avatar for author $id\n";
+        }
+    }
+    if ($avatar_needs_refresh) {
+	    system('wget --header='.$cookie.' --no-check-certificate '.$avatar_source_url.' -O '.$source_file);
+	    print "coalescing avatar to $temp_file\n";
+	    system($convert.' '.$source_file.' -coalesce '.$temp_file);
+	    print "resizing avatar to $target_file\n";
+	    system($convert.' '.$temp_file.' -filter box -resize '.$avatar_resize_to.'x'.$avatar_resize_to.' '.$target_file);
+        file_put_contents($avatar_meta_file, $avatar_source_url . PHP_EOL);
+    }
 	// check if its animated
 	$avatar_frames = exec("identify $target_file | sed -n 'p;$=' | tail -1");
 	if ((int)$avatar_frames > 1) {
@@ -172,12 +220,7 @@ if ($is_short) {
     $tmp5 = "[battle_time] overlay=1:x='".$battle_offset."-(overlay_w+100)*0.5':y=666".$position;
 }
 
-$target_lufs = -14;
-$target_lra = 11;
-$target_tp = -1.5;
-$loudnorm_filter = build_loudnorm_linear_two_pass_filter('assets/mp3', $target_lufs, $target_lra, $target_tp, $system);
-
-$ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i assets/mp3 -filter_complex "
+$ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/battle-art450 -i assets/format.png -loop 1 -r 15 -i assets/botblogo-%01d.png -i assets/title.png -i assets/battle-time.png '.$assets_cli.' -i '.escapeshellarg($audio_input_path).' -filter_complex "
 '.$vid_dimensions.'
 [0:v] setpts=PTS-STARTPTS [bg];
 [1:v] setpts=PTS-STARTPTS [battle];
@@ -191,17 +234,17 @@ $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/bat
 [tmp3]".$tmp3." [tmp4];
 [tmp4]".$tmp4." [tmp5];
 [tmp5]".$tmp5.'
-" -af "'.$loudnorm_filter.'" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
+" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
 
 print $ffmpeg_call;
 
 file_put_contents('assets/ffmpeg_call', $ffmpeg_call);
 
-function build_loudnorm_linear_two_pass_filter(string $audio_path, float $target_lufs, float $target_lra, float $target_tp, string $system): string
+function normalize_audio_loudnorm_two_pass(string $input_path, string $output_path, float $target_lufs, float $target_lra, float $target_tp, string $system): void
 {
     $pass1_filter = 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':print_format=json';
     $null_sink = (strtolower($system) === 'windows') ? 'NUL' : '/dev/null';
-    $cmd = 'ffmpeg -hide_banner -nostats -i '.escapeshellarg($audio_path).' -af '.escapeshellarg($pass1_filter).' -f null '.escapeshellarg($null_sink).' 2>&1';
+    $cmd = 'ffmpeg -hide_banner -nostats -i '.escapeshellarg($input_path).' -af '.escapeshellarg($pass1_filter).' -f null '.escapeshellarg($null_sink).' 2>&1';
     $out = shell_exec($cmd);
     if (!is_string($out) || trim($out) === '') {
         throw new RuntimeException('Two-pass loudnorm analysis produced no output.');
@@ -218,10 +261,19 @@ function build_loudnorm_linear_two_pass_filter(string $audio_path, float $target
             throw new RuntimeException('Missing loudnorm measured value: '.$required);
         }
     }
-    return 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':linear=true'
+    $pass2_filter = 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':linear=true'
         .':measured_I='.$stats['input_i']
         .':measured_LRA='.$stats['input_lra']
         .':measured_TP='.$stats['input_tp']
         .':measured_thresh='.$stats['input_thresh']
         .':offset='.$stats['target_offset'];
+    system(
+        'ffmpeg -y -i '.escapeshellarg($input_path)
+        .' -af '.escapeshellarg($pass2_filter)
+        .' -ar 44100 -c:a pcm_s16le '.escapeshellarg($output_path),
+        $exit_code
+    );
+    if ((int)$exit_code !== 0) {
+        throw new RuntimeException('Loudnorm apply pass failed while creating normalized wav.');
+    }
 }

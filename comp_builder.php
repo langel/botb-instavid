@@ -245,32 +245,23 @@ try {
         $author_names = $planned_track['author_names'];
         $period_id = (string)get_value($entry, ['period_id', 'period.id'], '0');
         $base_name = $planned_track['base_name'];
-        $mp3_temp = $output['temp'] . DIRECTORY_SEPARATOR . "{$track_padded}_{$entry_id}.mp3";
         $wav_out = $output['bandcamp'] . DIRECTORY_SEPARATOR . $base_name . '.wav';
 
-        $audio_url = "https://battleofthebits.com/player/EntryPlay/{$entry_id}";
-        run("curl -ksSL --header " . esc($cookie_header) . " " . esc($audio_url) . " -o " . esc($mp3_temp), "download mp3 for entry {$entry_id}");
-        normalize_audio_loudnorm_two_pass($mp3_temp, $wav_out, -14.0, 11.0, -1.5, 44100, 'pcm_s16le');
-
         $track_video_root = "{$entry_id}.mp4";
-        run("bash instavid.sh {$entry_id} wide", "render instavid for entry {$entry_id} (forced wide)");
+        run("bash instavid.sh {$entry_id} wide --keep-assets", "render instavid for entry {$entry_id} (forced wide)");
         if (!file_exists($track_video_root)) {
             throw new RuntimeException("Expected video missing after instavid: {$track_video_root}");
         }
+        $instavid_wav = 'assets' . DIRECTORY_SEPARATOR . 'normalized.wav';
+        if (!file_exists($instavid_wav)) {
+            throw new RuntimeException("Expected normalized wav missing after instavid: {$instavid_wav}");
+        }
+        copy_or_fail($instavid_wav, $wav_out, "copy instavid normalized wav for entry {$entry_id}");
 
-        $track_video = $output['youtube_tracks'] . DIRECTORY_SEPARATOR . "{$track_padded}_{$entry_id}.mp4";
+        $track_video = $output['youtube'] . DIRECTORY_SEPARATOR . "{$track_padded}_{$entry_id}.mp4";
         rename_or_fail($track_video_root, $track_video, "move rendered video for entry {$entry_id}");
-
-        $normalized_video = $output['youtube_normalized'] . DIRECTORY_SEPARATOR . "{$track_padded}_{$entry_id}.norm.mp4";
-        run(
-            "ffmpeg -y -i " . esc($track_video) .
-            " -vf " . esc("scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1") .
-            " -r 30000/1001 -c:v libx264 -crf 20 -preset medium -pix_fmt yuv420p -c:a aac -b:a 192k -ar 48000 -ac 2 " . esc($normalized_video),
-            "normalize video dimensions for entry {$entry_id}"
-        );
-
-        $normalized_video_abs = resolve_absolute_path($normalized_video);
-        $concat_lines[] = "file '" . escape_concat_path($normalized_video_abs) . "'";
+        $track_video_abs = resolve_absolute_path($track_video);
+        $concat_lines[] = "file '" . escape_concat_path($track_video_abs) . "'";
         $track_title_display = $planned_track['title_display'];
         $manifest_entries[] = [
             'track' => $track_no,
@@ -285,6 +276,8 @@ try {
             'wav' => normalize_path($wav_out),
             'video' => normalize_path($track_video),
         ];
+
+        remove_directory_recursive('assets');
     }
 
     $battle_profile_url = "https://battleofthebits.org/arena/Battle/{$battle_id}";
@@ -375,13 +368,6 @@ try {
         "{$convert_cmd} " . esc($thumbnail_bg) . " " . esc($thumbnail_cover) . " -gravity center -composite -quality 92 " . esc($thumbnail_out),
         "compose youtube thumbnail image"
     );
-
-    foreach (glob($output['youtube_tracks'] . DIRECTORY_SEPARATOR . '*.mp4') ?: [] as $file) {
-        @unlink($file);
-    }
-    foreach (glob($output['youtube_normalized'] . DIRECTORY_SEPARATOR . '*.mp4') ?: [] as $file) {
-        @unlink($file);
-    }
 
     file_put_contents(
         $output['root'] . DIRECTORY_SEPARATOR . 'selected_entries.json',
@@ -1121,8 +1107,6 @@ function build_output_structure(string $root, bool $preview_only = false): array
         'root' => $root,
         'bandcamp' => $root . DIRECTORY_SEPARATOR . 'bandcamp',
         'youtube' => $root . DIRECTORY_SEPARATOR . 'youtube',
-        'youtube_tracks' => $root . DIRECTORY_SEPARATOR . 'youtube' . DIRECTORY_SEPARATOR . 'tracks',
-        'youtube_normalized' => $root . DIRECTORY_SEPARATOR . 'youtube' . DIRECTORY_SEPARATOR . 'normalized',
         'temp' => $root . DIRECTORY_SEPARATOR . 'temp',
     ];
 
