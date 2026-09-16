@@ -41,6 +41,7 @@ if ($config === false) {
 
 $system_type = $config['global']['system'] ?? '';
 $convert_cmd = (strtolower($system_type) === 'windows') ? 'magick' : 'convert';
+$identify_cmd = (strtolower($system_type) === 'windows') ? 'magick identify' : 'identify';
 $user_id = $config['cookie']['user_id'] ?? '';
 $serial = $config['cookie']['serial'] ?? '';
 $botbr_id = $config['cookie']['botbr_id'] ?? '';
@@ -280,7 +281,7 @@ try {
         remove_directory_recursive('assets');
     }
 
-    $battle_profile_url = "https://battleofthebits.org/arena/Battle/{$battle_id}";
+    $battle_profile_url = "https://battleofthebits.com/arena/Battle/{$battle_id}";
     $release_date_long = format_battle_release_date_long($battle);
     if ($release_date_long === '') {
         $release_date_long = date('F j, Y');
@@ -311,7 +312,10 @@ try {
 
     run("curl -ksSL --header " . esc($cookie_header) . " " . esc($cover_url) . " -o " . esc($cover_src), "download battle cover art");
 
-    [$cover_w, $cover_h] = get_image_dimensions($cover_src);
+    $cover_source_info = resolve_cover_still_source($cover_src, $output['temp'], $convert_cmd, $identify_cmd);
+    $cover_still_src = $cover_source_info['still_path'];
+
+    [$cover_w, $cover_h] = get_image_dimensions($cover_still_src);
     $scale = 1;
     while (($cover_w * $scale) < 1400 || ($cover_h * $scale) < 1400) {
         $scale++;
@@ -322,11 +326,11 @@ try {
 
     if ($scale > 1) {
         run(
-            "{$convert_cmd} " . esc($cover_src) . " -filter point -resize {$scaled_w}x{$scaled_h}! " . esc($cover_out),
+            "{$convert_cmd} " . esc($cover_still_src) . " -filter point -resize {$scaled_w}x{$scaled_h}! " . esc($cover_out),
             "scale cover art by integer multiple {$scale}x"
         );
     } else {
-        copy_or_fail($cover_src, $cover_out, "copy cover art without scaling");
+        copy_or_fail($cover_still_src, $cover_out, "copy cover art without scaling");
     }
 
     $concat_file = $output['temp'] . DIRECTORY_SEPARATOR . 'concat_list.txt';
@@ -343,17 +347,6 @@ try {
     $thumbnail_out = $output['root'] . DIRECTORY_SEPARATOR . 'yt_thumbnail.jpg';
     $thumbnail_bg = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_bg.png';
     $thumbnail_cover = $output['temp'] . DIRECTORY_SEPARATOR . 'thumbnail_cover.png';
-    $thumbnail_cover_source = $cover_src;
-    if (strtolower($cover_ext) === 'gif') {
-        $thumbnail_cover_source = $output['temp'] . DIRECTORY_SEPARATOR . 'cover_source_frame0.png';
-        run(
-            "{$convert_cmd} " . esc($cover_src . '[0]') . " " . esc($thumbnail_cover_source),
-            "extract first frame from gif cover art for thumbnail"
-        );
-        if (!file_exists($thumbnail_cover_source)) {
-            throw new RuntimeException("Failed to extract first frame from GIF cover art for thumbnail.");
-        }
-    }
     $botb_pattern = $output['temp'] . DIRECTORY_SEPARATOR . 'botb_bg.png';
     run(
         "curl -ksSL --header " . esc($cookie_header) . " " . esc('https://battleofthebits.com/disk/debris/botb_bg.png') . " -o " . esc($botb_pattern),
@@ -361,7 +354,7 @@ try {
     );
     create_tiled_image_background($botb_pattern, $thumbnail_bg, 1920, 1080);
     run(
-        "{$convert_cmd} " . esc($thumbnail_cover_source) . " -resize x1080 " . esc($thumbnail_cover),
+        "{$convert_cmd} " . esc($cover_still_src) . " -resize x1080 " . esc($thumbnail_cover),
         "resize cover art for thumbnail foreground"
     );
     run(
@@ -1525,6 +1518,47 @@ function encode_url_path(string $url): string
         $rebuilt .= '#' . $parts['fragment'];
     }
     return $rebuilt;
+}
+
+function resolve_cover_still_source(string $cover_source_path, string $temp_dir, string $convert_cmd, string $identify_cmd): array
+{
+    $frame_count = detect_image_frame_count($cover_source_path, $identify_cmd);
+    if ($frame_count <= 1) {
+        return [
+            'still_path' => $cover_source_path,
+            'is_animated' => false,
+        ];
+    }
+
+    $still_path = $temp_dir . DIRECTORY_SEPARATOR . 'cover_source_frame0.png';
+    run(
+        "{$convert_cmd} " . esc($cover_source_path . '[0]') . " " . esc($still_path),
+        "extract first frame from animated cover art"
+    );
+    if (!file_exists($still_path)) {
+        throw new RuntimeException("Failed to extract first frame from animated cover art.");
+    }
+    return [
+        'still_path' => $still_path,
+        'is_animated' => true,
+    ];
+}
+
+function detect_image_frame_count(string $image_path, string $identify_cmd): int
+{
+    $cmd = "{$identify_cmd} -ping " . esc($image_path) . " 2>/dev/null";
+    $output = shell_exec($cmd);
+    if (!is_string($output) || trim($output) === '') {
+        return 1;
+    }
+    $lines = preg_split('/\R+/', trim($output)) ?: [];
+    $count = count(array_values(array_filter($lines, static function ($line): bool {
+        return trim((string)$line) !== '';
+    })));
+    if ($count <= 0) {
+        return 1;
+    }
+    return $count;
 }
 
 function get_image_dimensions(string $path): array

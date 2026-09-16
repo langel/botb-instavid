@@ -234,7 +234,7 @@ $ffmpeg_call = 'ffmpeg -i assets/background.png '.$battle_art_cli.'-i assets/bat
 [tmp3]".$tmp3." [tmp4];
 [tmp4]".$tmp4." [tmp5];
 [tmp5]".$tmp5.'
-" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
+" -c:v libx264 -b:v 3500k -c:a aac -strict experimental -b:a 192k -ar 48000 -ac 2 -pix_fmt yuv420p -r 30000/1001 -t '.$mp3_length.' '.$data['id'].'.mp4';
 
 print $ffmpeg_call;
 

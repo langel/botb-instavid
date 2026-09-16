@@ -144,7 +144,7 @@ $notes .= "\n\n";
 $notes .= $tracksfail;
 
 $notes .= "\n\noriginally released ASDASDASD September 21, 2011";
-$notes .= "\nall tracks available free here:\nhttps://battleofthebits.org/arena/Battle/".$battle['id'];
+$notes .= "\nall tracks available free here:\nhttps://battleofthebits.com/arena/Battle/".$battle['id'];
 $notes .= "\n";
 $notes .= "\nsupport BotB on bandcamp here:";
 if ($bandcamp) $notes .= "\n".$argv[1];
