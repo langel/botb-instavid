@@ -282,6 +282,7 @@ try {
     }
 
     $battle_profile_url = "https://battleofthebits.com/arena/Battle/{$battle_id}";
+    $bandcamp_album_url = build_bandcamp_album_url_from_title($battle_title);
     $release_date_long = format_battle_release_date_long($battle);
     if ($release_date_long === '') {
         $release_date_long = date('F j, Y');
@@ -289,6 +290,7 @@ try {
     $youtube_description_lines = [];
     $youtube_description_lines[] = "completed {$release_date_long}";
     $youtube_description_lines[] = $battle_profile_url;
+    $youtube_description_lines[] = $bandcamp_album_url;
     $youtube_description_lines[] = '';
     $running_seconds = 0;
     foreach ($manifest_entries as $manifest_entry) {
@@ -1180,6 +1182,13 @@ function format_seconds_compact_mmss_or_hhmmss(int $total_seconds): string
         return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
     }
     return sprintf('%02d:%02d', $minutes, $seconds);
+}
+
+function build_bandcamp_album_url_from_title(string $battle_title): string
+{
+    $slug = strtolower(trim($battle_title));
+    $slug = preg_replace('/\s+/', '-', $slug);
+    return "https://battleofthebits.bandcamp.com/album/{$slug}";
 }
 
 function format_battle_release_date_mmddyyyy(array $battle): string

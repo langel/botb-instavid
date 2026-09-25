@@ -13,6 +13,9 @@ Compilation builder usage:
 `php comp_builder.php {battle_id}`
 `php comp_builder.php {battle_id} --preview`
 
+Battle promo usage:
+`php battle_promo.php {battle_id}`
+
 `comp_builder.php` will:
 - fetch battle metadata from `https://battleofthebits.com/api/v1/battle/load/{battle_id}` and create an output directory named after the battle title
 - fetch battle entries from `https://battleofthebits.com/api/v1/entry/list/0/500?filters=battle_id~{battle_id}`
@@ -69,3 +72,7 @@ Output artifacts are written under the battle title directory, including:
 - `yt_description.txt`
 - `copy_links.html`
 - `playlist_report.txt` (preflight selection summary + ordered track filenames)
+
+`battle_promo.php` writes promo images to the repository root:
+- `promo/promo_hd_horizontal.jpg` (`1920x1080`)
+- `promo/promo_hd_vertical.jpg` (`1080x1920`)
