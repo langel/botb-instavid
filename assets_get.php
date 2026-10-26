@@ -84,7 +84,7 @@ $target_lra = 11;
 $target_tp = -1.5;
 $normalized_wav_path = 'assets/normalized.wav';
 if (!file_exists($normalized_wav_path) || filemtime($normalized_wav_path) < filemtime('assets/mp3')) {
-    normalize_audio_loudnorm_two_pass('assets/mp3', $normalized_wav_path, $target_lufs, $target_lra, $target_tp, $system);
+    normalize_audio_loudnorm_two_pass('assets/mp3', $normalized_wav_path, $target_lufs, $target_lra, $target_tp, $system, (int)$data['id']);
 } else {
     echo "reusing cached normalized wav\n";
 }
@@ -240,8 +240,9 @@ print $ffmpeg_call;
 
 file_put_contents('assets/ffmpeg_call', $ffmpeg_call);
 
-function normalize_audio_loudnorm_two_pass(string $input_path, string $output_path, float $target_lufs, float $target_lra, float $target_tp, string $system): void
+function normalize_audio_loudnorm_two_pass(string $input_path, string $output_path, float $target_lufs, float $target_lra, float $target_tp, string $system, int $entry_id = 0): void
 {
+    $entry_label = ($entry_id > 0) ? "entry {$entry_id}" : 'entry unknown';
     $pass1_filter = 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':print_format=json';
     $null_sink = (strtolower($system) === 'windows') ? 'NUL' : '/dev/null';
     $cmd = 'ffmpeg -hide_banner -nostats -i '.escapeshellarg($input_path).' -af '.escapeshellarg($pass1_filter).' -f null '.escapeshellarg($null_sink).' 2>&1';
@@ -261,12 +262,50 @@ function normalize_audio_loudnorm_two_pass(string $input_path, string $output_pa
             throw new RuntimeException('Missing loudnorm measured value: '.$required);
         }
     }
+    $input_i = (float)$stats['input_i'];
+    $input_lra = (float)$stats['input_lra'];
+    $input_tp = (float)$stats['input_tp'];
+    $target_offset = (float)$stats['target_offset'];
+    $normalization_type = strtolower(trim((string)($stats['normalization_type'] ?? 'unknown')));
+    echo "LOUDNORM stats ({$entry_label}): input_i=".format_db($input_i)." LUFS, input_lra=".format_db($input_lra)." LU, input_tp=".format_db($input_tp)." dBTP, target_offset=".format_db($target_offset)." dB, normalization_type={$normalization_type}\n";
+
+    $risk_reasons = [];
+    if ($normalization_type === 'dynamic') {
+        $risk_reasons[] = 'normalization_type=dynamic';
+    }
+    if ($target_offset > 4.0) {
+        $risk_reasons[] = 'target_offset_gt_4db';
+    }
+    if ($input_lra < 2.0 && $target_offset > 2.0) {
+        $risk_reasons[] = 'low_input_lra_with_boost';
+    }
+    if (!empty($risk_reasons)) {
+        $desired_gain = $target_lufs - $input_i;
+        $max_positive_gain = 4.0;
+        $safe_gain = max(-6.0, min($desired_gain, $max_positive_gain));
+        $limiter_ceiling = 0.98;
+        echo "LOUDNORM guard ({$entry_label}): using static-gain fallback due to ".implode(', ', $risk_reasons)."; desired_gain=".format_db($desired_gain)." dB, applied_gain=".format_db($safe_gain)." dB\n";
+        echo "LOUDNORM guard ({$entry_label}): fallback chain=volume(".format_db($safe_gain)." dB)->alimiter(limit={$limiter_ceiling}, attack=5, release=50)\n";
+        $fallback_filter = 'volume='.format_db($safe_gain).'dB,alimiter=limit='.$limiter_ceiling.':level=disabled:attack=5:release=50';
+        system(
+            'ffmpeg -y -i '.escapeshellarg($input_path)
+            .' -af '.escapeshellarg($fallback_filter)
+            .' -ar 44100 -c:a pcm_s16le '.escapeshellarg($output_path),
+            $exit_code
+        );
+        if ((int)$exit_code !== 0) {
+            throw new RuntimeException('Fallback static-gain normalization failed while creating normalized wav.');
+        }
+        return;
+    }
+
     $pass2_filter = 'loudnorm=I='.$target_lufs.':LRA='.$target_lra.':TP='.$target_tp.':linear=true'
         .':measured_I='.$stats['input_i']
         .':measured_LRA='.$stats['input_lra']
         .':measured_TP='.$stats['input_tp']
         .':measured_thresh='.$stats['input_thresh']
         .':offset='.$stats['target_offset'];
+    echo "LOUDNORM apply ({$entry_label}): using linear two-pass loudnorm\n";
     system(
         'ffmpeg -y -i '.escapeshellarg($input_path)
         .' -af '.escapeshellarg($pass2_filter)
@@ -276,4 +315,13 @@ function normalize_audio_loudnorm_two_pass(string $input_path, string $output_pa
     if ((int)$exit_code !== 0) {
         throw new RuntimeException('Loudnorm apply pass failed while creating normalized wav.');
     }
+}
+
+function format_db(float $value): string
+{
+    $text = sprintf('%.2f', $value);
+    if ($value >= 0.0) {
+        return '+'.$text;
+    }
+    return $text;
 }

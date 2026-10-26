@@ -47,6 +47,8 @@ Battle promo usage:
 - if the battle-title output directory already exists, prompt for overwrite before continuing
 - generate Bandcamp files:
   - normalized WAV files at `-14 LUFS` (`loudnorm` two-pass with `linear=true`) with sample rate normalized to `44100` Hz
+  - normalization logs include per-entry loudnorm stats (`input_i`, `input_lra`, `input_tp`, `target_offset`, `normalization_type`)
+  - a loudnorm guard falls back to capped static gain + light true-peak limiting when analysis indicates risky normalization behavior
   - WAV channel layout is preserved from source (mono stays mono, stereo stays stereo)
   - filename format token segment uses `[format_token]`, or `-` when all selected tracks share the same format token
   - scaled battle cover art (integer multiples until dimensions are at least `1400x1400`)

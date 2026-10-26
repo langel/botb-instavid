@@ -247,6 +247,16 @@ try {
         $period_id = (string)get_value($entry, ['period_id', 'period.id'], '0');
         $base_name = $planned_track['base_name'];
         $wav_out = $output['bandcamp'] . DIRECTORY_SEPARATOR . $base_name . '.wav';
+        echo sprintf(
+            "[ENTRY %02d/%02d] id=%d | %s - %s | format=%s | score=%.2f\n",
+            $track_no,
+            $total_tracks,
+            $entry_id,
+            $author_names,
+            $title,
+            $format_token,
+            $score
+        );
 
         $track_video_root = "{$entry_id}.mp4";
         run("bash instavid.sh {$entry_id} wide --keep-assets", "render instavid for entry {$entry_id} (forced wide)");
@@ -258,9 +268,11 @@ try {
             throw new RuntimeException("Expected normalized wav missing after instavid: {$instavid_wav}");
         }
         copy_or_fail($instavid_wav, $wav_out, "copy instavid normalized wav for entry {$entry_id}");
+        echo "[ENTRY {$entry_id}] copied normalized wav to {$wav_out}\n";
 
         $track_video = $output['youtube'] . DIRECTORY_SEPARATOR . "{$track_padded}_{$entry_id}.mp4";
         rename_or_fail($track_video_root, $track_video, "move rendered video for entry {$entry_id}");
+        echo "[ENTRY {$entry_id}] moved rendered video to {$track_video}\n";
         $track_video_abs = resolve_absolute_path($track_video);
         $concat_lines[] = "file '" . escape_concat_path($track_video_abs) . "'";
         $track_title_display = $planned_track['title_display'];
